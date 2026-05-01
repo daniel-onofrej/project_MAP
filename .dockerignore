@@ -1,0 +1,65 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Environment / secrets — never bake these into image layers
+.env
+.env.*
+!.env.example
+secrets/
+
+# Build artefacts (rebuilt inside Docker)
+node_modules
+.next
+dist
+build
+out
+
+# Dev tooling
+.eslintrc*
+.prettierrc*
+.editorconfig
+.husky
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Tests
+__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+coverage
+jest.config*
+playwright*
+cypress*
+vitest*
+
+# Docs / project meta
+*.md
+!README.md
+docs
+CHANGELOG*
+LICENSE
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.swp
+*.swo
+
+# Docker files (no need to copy these into the image)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Nginx / infra config (served separately)
+nginx/
+
+# Kubernetes manifests
+k8s/

@@ -1,0 +1,2057 @@
+{
+  "id": "agent-1d0632de-mmj4no0c-tcpw8t",
+  "name": "Nova Refund Arbiter",
+  "description": "Automated Claims Adjuster for ShopCo",
+  "originalPrompt": "# Nova Refund Arbiter — System Prompt v1.2\n\n## Identity\nYou are Nova, an Automated Claims Adjuster for ShopCo. Your tone is literal and impartial. You do not express sympathy or make exceptions outside of defined rules.\n\n## Trigger\nYou activate when a user submits a refund request through the ShopCo support portal.\n\n## Step 1: Input Validation\n- If the user's message is empty or under 10 characters, respond: \"Please provide more detail about your request.\" and terminate.\n- If the user uses aggressive or abusive language (detected via ToxicityFilter tool), respond: \"This conversation has been terminated due to conduct.\" and end the session.\n\n## Step 2: Order Lookup\n- Call the OrderLookup tool with the provided order_id.\n- If no order_id is provided, ask the user: \"Please provide your order ID to continue.\"\n- If the order is not found, respond: \"No order found matching that ID.\" and terminate.\n- If the order was placed more than 90 days ago, apply Rule C (Late Claim).\n- If the order was placed more than 30 days ago but under 90 days, apply Rule B (Standard Window Check).\n- If the order was placed within 30 days, proceed to Step 3.\n\n## Step 3: Item Condition Check\n- Ask the user: \"Was the item damaged, defective, or unwanted?\"\n- If damaged or defective: approve full refund, log to RefundLedger tool.\n- If unwanted: check if item is in the Non-Returnable Items list (call CategoryCheck tool).\n  - If non-returnable: deny refund, respond: \"This item is not eligible for return.\"\n  - If returnable: approve store credit only (no cash refund).\n\n## Rule B — Standard Window Check\n- Items between 30-90 days are eligible for store credit only.\n- Exception: if the item is defective AND the defect was reported within 7 days of delivery, approve full cash refund.\n- Exception: if the customer has Platinum membership (check MembershipCheck tool), approve full cash refund regardless of defect status.\n\n## Rule C — Late Claim\n- Items over 90 days are not eligible for any refund or store credit.\n- Exception: if the defect is a known manufacturer defect (call ManufacturerDefectDB tool), escalate to human supervisor.\n- Exception: if the customer has Platinum membership, apply Rule B instead.\n\n## Refund Amounts\n- Full refund: original purchase price including tax.\n- Store credit: original purchase price excluding tax.\n- Partial refund: 50% of original purchase price excluding tax (used when both damage and non-returnable status apply — see Rule D).\n\n## Rule D — Conflict Resolution\n- If an item is both damaged AND non-returnable, issue a partial refund (50%).\n- This overrides Rule C's denial if the claim is within 90 days.\n\n## Escalation\n- If the RefundLedger tool fails, escalate to human supervisor immediately.\n- If the user requests to speak to a human at any point, escalate immediately.\n- If three or more exceptions apply simultaneously, escalate to human supervisor.\n\n## Logging\n- All decisions must be logged to RefundLedger with: order_id, decision, rule_applied, timestamp.\n- Failed log attempts must be retried once before escalating.\n",
+  "nodes": [
+    {
+      "id": "n-eb063fe5",
+      "type": "START",
+      "label": "Nova Refund Arbiter",
+      "description": "",
+      "lineIndex": 0,
+      "rawLine": "# Nova Refund Arbiter — System Prompt v1.2",
+      "config": {
+        "logicSnippet": "Nova Refund Arbiter — System Prompt v1.2",
+        "sourceSection": "",
+        "sourceFormat": "prose",
+        "order": 1,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "start",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 0,
+        "origLine": "# Nova Refund Arbiter — System Prompt v1.2",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "Nova Refund Arbiter — System Prompt v1.2"
+      },
+      "position": {
+        "x": 50,
+        "y": 50
+      }
+    },
+    {
+      "id": "n-8f55aa12",
+      "type": "PERSONA",
+      "label": "Nova Identity",
+      "description": "",
+      "lineIndex": 3,
+      "rawLine": "You are Nova, an Automated Claims Adjuster for ShopCo. Your tone is literal and impartial. You do not express sympathy or make exceptions outside of defined rules.",
+      "config": {
+        "logicSnippet": "You are Nova, an Automated Claims Adjuster for ShopCo. Your tone is literal and impartial. You do not express sympathy or make exceptions outside of defined rules.",
+        "sourceSection": "Identity",
+        "sourceFormat": "prose",
+        "order": 2,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "persona",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "left",
+        "branchGroup": null,
+        "origRow": 3,
+        "origLine": "You are Nova, an Automated Claims Adjuster for ShopCo. Your tone is literal and impartial. You do not express sympathy or make exceptions outside of defined rules.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "You are Nova, an Automated Claims Adjuster for ShopCo. Your tone is literal and impartial. You do not express sympathy or make exceptions outside of defined rules."
+      },
+      "position": {
+        "x": 370,
+        "y": 230
+      }
+    },
+    {
+      "id": "n-ceda4632",
+      "type": "TRIGGER",
+      "label": "Portal Submission",
+      "description": "",
+      "lineIndex": 6,
+      "rawLine": "You activate when a user submits a refund request through the ShopCo support portal.",
+      "config": {
+        "logicSnippet": "You activate when a user submits a refund request through the ShopCo support portal.",
+        "sourceSection": "Trigger",
+        "sourceFormat": "prose",
+        "order": 3,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "trigger",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "right",
+        "branchGroup": null,
+        "origRow": 6,
+        "origLine": "You activate when a user submits a refund request through the ShopCo support portal.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "You activate when a user submits a refund request through the ShopCo support portal."
+      },
+      "position": {
+        "x": 70,
+        "y": 230
+      }
+    },
+    {
+      "id": "n-9458e1a8",
+      "type": "GUARD",
+      "label": "Step 1: Input Validation",
+      "description": "",
+      "lineIndex": 8,
+      "rawLine": "## Step 1: Input Validation",
+      "config": {
+        "logicSnippet": "Step 1: Input Validation",
+        "sourceSection": "Step 1: Input Validation",
+        "sourceFormat": "prose",
+        "order": 4,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "guard",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "right",
+        "branchGroup": null,
+        "origRow": 8,
+        "origLine": "## Step 1: Input Validation",
+        "origIndent": 0,
+        "origBlankBefore": true,
+        "origSnippet": "Step 1: Input Validation"
+      },
+      "position": {
+        "x": 70,
+        "y": 390
+      }
+    },
+    {
+      "id": "n-5ec53910",
+      "type": "DECISION",
+      "label": "Message Valid?",
+      "description": "",
+      "lineIndex": 9,
+      "rawLine": "- If the user's message is empty or under 10 characters, respond: \"Please provide more detail about your request.\" and terminate.",
+      "config": {
+        "logicSnippet": "If the user's message is empty or under 10 characters, respond: \"Please provide more detail about your request.\" and terminate.",
+        "sourceSection": "Step 1: Input Validation",
+        "sourceFormat": "prose",
+        "order": 5,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 9,
+        "origLine": "- If the user's message is empty or under 10 characters, respond: \"Please provide more detail about your request.\" and terminate.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "If the user's message is empty or under 10 characters, respond: \"Please provide more detail about your request.\" and terminate."
+      },
+      "position": {
+        "x": 50,
+        "y": 550
+      }
+    },
+    {
+      "id": "n-65882d7f",
+      "type": "RESOLUTION",
+      "label": "Request Detail",
+      "description": "",
+      "lineIndex": 9,
+      "rawLine": "- If the user's message is empty or under 10 characters, respond: \"Please provide more detail about your request.\" and terminate.",
+      "config": {
+        "logicSnippet": "Please provide more detail about your request.",
+        "sourceSection": "Step 1: Input Validation",
+        "sourceFormat": "prose",
+        "order": 6,
+        "tool": null,
+        "value": null,
+        "outcome": "failure",
+        "pfgType": "resolution",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "Please provide more detail about your request."
+      },
+      "position": {
+        "x": 1049.8955530793473,
+        "y": 1632.1454962649314
+      }
+    },
+    {
+      "id": "n-f108d241",
+      "type": "END",
+      "label": "Terminate Request",
+      "description": "",
+      "config": {
+        "logicSnippet": "",
+        "sourceSection": "",
+        "sourceFormat": "prose",
+        "order": 7,
+        "tool": null,
+        "value": null,
+        "outcome": "failure",
+        "pfgType": "end",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": ""
+      },
+      "position": {
+        "x": 736.0506271580338,
+        "y": 1967.3322691318053
+      }
+    },
+    {
+      "id": "n-e4a1049d",
+      "type": "DECISION",
+      "label": "Language Abusive?",
+      "description": "",
+      "lineIndex": 10,
+      "rawLine": "- If the user uses aggressive or abusive language (detected via ToxicityFilter tool), respond: \"This conversation has been terminated due to conduct.\" and end the session.",
+      "config": {
+        "logicSnippet": "If the user uses aggressive or abusive language (detected via ToxicityFilter tool), respond: \"This conversation has been terminated due to conduct.\" and end the session.",
+        "sourceSection": "Step 1: Input Validation",
+        "sourceFormat": "prose",
+        "order": 8,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 10,
+        "origLine": "- If the user uses aggressive or abusive language (detected via ToxicityFilter tool), respond: \"This conversation has been terminated due to conduct.\" and end the session.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "If the user uses aggressive or abusive language (detected via ToxicityFilter tool), respond: \"This conversation has been terminated due to conduct.\" and end the session."
+      },
+      "position": {
+        "x": 50,
+        "y": 730
+      }
+    },
+    {
+      "id": "n-e70998f1",
+      "type": "TOOL",
+      "label": "ToxicityFilter",
+      "description": "",
+      "lineIndex": 10,
+      "rawLine": "- If the user uses aggressive or abusive language (detected via ToxicityFilter tool), respond: \"This conversation has been terminated due to conduct.\" and end the session.",
+      "config": {
+        "logicSnippet": "detected via ToxicityFilter tool",
+        "sourceSection": "Step 1: Input Validation",
+        "sourceFormat": "prose",
+        "order": 9,
+        "tool": "ToxicityFilter",
+        "value": null,
+        "outcome": null,
+        "pfgType": "tool",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "detected via ToxicityFilter tool"
+      },
+      "position": {
+        "x": 618.8228049468815,
+        "y": 686.8100345285413
+      }
+    },
+    {
+      "id": "n-8e6ba0d7",
+      "type": "RESOLUTION",
+      "label": "Conduct Termination",
+      "description": "",
+      "lineIndex": 10,
+      "rawLine": "- If the user uses aggressive or abusive language (detected via ToxicityFilter tool), respond: \"This conversation has been terminated due to conduct.\" and end the session.",
+      "config": {
+        "logicSnippet": "This conversation has been terminated due to conduct.",
+        "sourceSection": "Step 1: Input Validation",
+        "sourceFormat": "prose",
+        "order": 10,
+        "tool": null,
+        "value": null,
+        "outcome": "refusal",
+        "pfgType": "resolution",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "This conversation has been terminated due to conduct."
+      },
+      "position": {
+        "x": 850.7151654216437,
+        "y": 880.3575827108219
+      }
+    },
+    {
+      "id": "n-12231b16",
+      "type": "END",
+      "label": "Session Ended",
+      "description": "",
+      "config": {
+        "logicSnippet": "",
+        "sourceSection": "",
+        "sourceFormat": "prose",
+        "order": 11,
+        "tool": null,
+        "value": null,
+        "outcome": "refusal",
+        "pfgType": "end",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": ""
+      },
+      "position": {
+        "x": 1159.3450395501452,
+        "y": 1213.8006839724496
+      }
+    },
+    {
+      "id": "n-d9360d7f",
+      "type": "GUARD",
+      "label": "Step 2: Order Lookup",
+      "description": "",
+      "lineIndex": 12,
+      "rawLine": "## Step 2: Order Lookup",
+      "config": {
+        "logicSnippet": "Step 2: Order Lookup",
+        "sourceSection": "Step 2: Order Lookup",
+        "sourceFormat": "prose",
+        "order": 12,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "guard",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "right",
+        "branchGroup": null,
+        "origRow": 12,
+        "origLine": "## Step 2: Order Lookup",
+        "origIndent": 0,
+        "origBlankBefore": true,
+        "origSnippet": "Step 2: Order Lookup"
+      },
+      "position": {
+        "x": 90,
+        "y": 920
+      }
+    },
+    {
+      "id": "n-3a5abe1e",
+      "type": "DECISION",
+      "label": "Order ID Provided?",
+      "description": "",
+      "lineIndex": 14,
+      "rawLine": "- If no order_id is provided, ask the user: \"Please provide your order ID to continue.\"",
+      "config": {
+        "logicSnippet": "If no order_id is provided, ask the user: \"Please provide your order ID to continue.\"",
+        "sourceSection": "Step 2: Order Lookup",
+        "sourceFormat": "prose",
+        "order": 13,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 14,
+        "origLine": "- If no order_id is provided, ask the user: \"Please provide your order ID to continue.\"",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "If no order_id is provided, ask the user: \"Please provide your order ID to continue.\""
+      },
+      "position": {
+        "x": 70,
+        "y": 1090
+      }
+    },
+    {
+      "id": "n-fda6c36f",
+      "type": "ACTION",
+      "label": "Ask for Order ID",
+      "description": "",
+      "lineIndex": 14,
+      "rawLine": "- If no order_id is provided, ask the user: \"Please provide your order ID to continue.\"",
+      "config": {
+        "logicSnippet": "Please provide your order ID to continue.",
+        "sourceSection": "Step 2: Order Lookup",
+        "sourceFormat": "prose",
+        "order": 14,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "action",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "Please provide your order ID to continue."
+      },
+      "position": {
+        "x": 430.4903085574132,
+        "y": 1266.5126567895086
+      }
+    },
+    {
+      "id": "n-89c00182",
+      "type": "TOOL",
+      "label": "OrderLookup",
+      "description": "",
+      "lineIndex": 13,
+      "rawLine": "- Call the OrderLookup tool with the provided order_id.",
+      "config": {
+        "logicSnippet": "Call the OrderLookup tool with the provided order_id.",
+        "sourceSection": "Step 2: Order Lookup",
+        "sourceFormat": "prose",
+        "order": 15,
+        "tool": "OrderLookup",
+        "value": null,
+        "outcome": null,
+        "pfgType": "tool",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 13,
+        "origLine": "- Call the OrderLookup tool with the provided order_id.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "Call the OrderLookup tool with the provided order_id."
+      },
+      "position": {
+        "x": 70,
+        "y": 1450
+      }
+    },
+    {
+      "id": "n-01cab002",
+      "type": "DECISION",
+      "label": "Order Found?",
+      "description": "",
+      "lineIndex": 15,
+      "rawLine": "- If the order is not found, respond: \"No order found matching that ID.\" and terminate.",
+      "config": {
+        "logicSnippet": "If the order is not found, respond: \"No order found matching that ID.\" and terminate.",
+        "sourceSection": "Step 2: Order Lookup",
+        "sourceFormat": "prose",
+        "order": 16,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 15,
+        "origLine": "- If the order is not found, respond: \"No order found matching that ID.\" and terminate.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "If the order is not found, respond: \"No order found matching that ID.\" and terminate."
+      },
+      "position": {
+        "x": 70,
+        "y": 1630
+      }
+    },
+    {
+      "id": "n-309d5867",
+      "type": "RESOLUTION",
+      "label": "Order Not Found",
+      "description": "",
+      "lineIndex": 15,
+      "rawLine": "- If the order is not found, respond: \"No order found matching that ID.\" and terminate.",
+      "config": {
+        "logicSnippet": "No order found matching that ID.",
+        "sourceSection": "Step 2: Order Lookup",
+        "sourceFormat": "prose",
+        "order": 17,
+        "tool": null,
+        "value": null,
+        "outcome": "failure",
+        "pfgType": "resolution",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "No order found matching that ID."
+      },
+      "position": {
+        "x": 736.0506271580339,
+        "y": 1693.1740024485334
+      }
+    },
+    {
+      "id": "n-612c0dae",
+      "type": "DECISION",
+      "label": "Order Age?",
+      "description": "",
+      "lineIndex": 16,
+      "rawLine": "- If the order was placed more than 90 days ago, apply Rule C (Late Claim).",
+      "config": {
+        "logicSnippet": "If the order was placed more than 90 days ago, apply Rule C (Late Claim). If the order was placed more than 30 days ago but under 90 days, apply Rule B (Standard Window Check). If the order was placed within 30 days, proceed to Step 3.",
+        "sourceSection": "Step 2: Order Lookup",
+        "sourceFormat": "prose",
+        "order": 18,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "If the order was placed more than 90 days ago, apply Rule C (Late Claim). If the order was placed more than 30 days ago but under 90 days, apply Rule B (Standard Window Check). If the order was placed within 30 days, proceed to Step 3."
+      },
+      "position": {
+        "x": 70,
+        "y": 1810
+      }
+    },
+    {
+      "id": "n-5a2bb5a3",
+      "type": "STEP",
+      "label": "Rule C — Late Claim",
+      "description": "",
+      "lineIndex": 32,
+      "rawLine": "## Rule C — Late Claim",
+      "config": {
+        "logicSnippet": "Rule C — Late Claim",
+        "sourceSection": "Rule C — Late Claim",
+        "sourceFormat": "prose",
+        "order": 19,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "step",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 32,
+        "origLine": "## Rule C — Late Claim",
+        "origIndent": 0,
+        "origBlankBefore": true,
+        "origSnippet": "Rule C — Late Claim"
+      },
+      "position": {
+        "x": 410,
+        "y": 1990
+      }
+    },
+    {
+      "id": "n-007744e9",
+      "type": "STEP",
+      "label": "Rule B — Standard Window Check",
+      "description": "",
+      "lineIndex": 27,
+      "rawLine": "## Rule B — Standard Window Check",
+      "config": {
+        "logicSnippet": "Rule B — Standard Window Check",
+        "sourceSection": "Rule B — Standard Window Check",
+        "sourceFormat": "prose",
+        "order": 20,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "step",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 27,
+        "origLine": "## Rule B — Standard Window Check",
+        "origIndent": 0,
+        "origBlankBefore": true,
+        "origSnippet": "Rule B — Standard Window Check"
+      },
+      "position": {
+        "x": 1930,
+        "y": 2350
+      }
+    },
+    {
+      "id": "n-ec17c07f",
+      "type": "GUARD",
+      "label": "Step 3: Item Condition Check",
+      "description": "",
+      "lineIndex": 20,
+      "rawLine": "## Step 3: Item Condition Check",
+      "config": {
+        "logicSnippet": "Step 3: Item Condition Check",
+        "sourceSection": "Step 3: Item Condition Check",
+        "sourceFormat": "prose",
+        "order": 21,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "guard",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "right",
+        "branchGroup": null,
+        "origRow": 20,
+        "origLine": "## Step 3: Item Condition Check",
+        "origIndent": 0,
+        "origBlankBefore": true,
+        "origSnippet": "Step 3: Item Condition Check"
+      },
+      "position": {
+        "x": 90,
+        "y": 2180
+      }
+    },
+    {
+      "id": "n-a7e99dea",
+      "type": "ACTION",
+      "label": "Ask Condition",
+      "description": "",
+      "lineIndex": 21,
+      "rawLine": "- Ask the user: \"Was the item damaged, defective, or unwanted?\"",
+      "config": {
+        "logicSnippet": "Ask the user: \"Was the item damaged, defective, or unwanted?\"",
+        "sourceSection": "Step 3: Item Condition Check",
+        "sourceFormat": "prose",
+        "order": 22,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "action",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 21,
+        "origLine": "- Ask the user: \"Was the item damaged, defective, or unwanted?\"",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "Ask the user: \"Was the item damaged, defective, or unwanted?\""
+      },
+      "position": {
+        "x": 70,
+        "y": 2350
+      }
+    },
+    {
+      "id": "n-a7ad7c61",
+      "type": "DECISION",
+      "label": "Condition Type?",
+      "description": "",
+      "lineIndex": 22,
+      "rawLine": "- If damaged or defective: approve full refund, log to RefundLedger tool.",
+      "config": {
+        "logicSnippet": "If damaged or defective: approve full refund, log to RefundLedger tool. If unwanted: check if item is in the Non-Returnable Items list (call CategoryCheck tool).",
+        "sourceSection": "Step 3: Item Condition Check",
+        "sourceFormat": "prose",
+        "order": 23,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "If damaged or defective: approve full refund, log to RefundLedger tool. If unwanted: check if item is in the Non-Returnable Items list (call CategoryCheck tool)."
+      },
+      "position": {
+        "x": 930,
+        "y": 2530
+      }
+    },
+    {
+      "id": "n-ec587310",
+      "type": "TOOL",
+      "label": "CategoryCheck",
+      "description": "",
+      "lineIndex": 23,
+      "rawLine": "- If unwanted: check if item is in the Non-Returnable Items list (call CategoryCheck tool).",
+      "config": {
+        "logicSnippet": "call CategoryCheck tool",
+        "sourceSection": "Step 3: Item Condition Check",
+        "sourceFormat": "prose",
+        "order": 24,
+        "tool": "CategoryCheck",
+        "value": null,
+        "outcome": null,
+        "pfgType": "tool",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 23,
+        "origLine": "- If unwanted: check if item is in the Non-Returnable Items list (call CategoryCheck tool).",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "call CategoryCheck tool"
+      },
+      "position": {
+        "x": 930,
+        "y": 2710
+      }
+    },
+    {
+      "id": "n-513febde",
+      "type": "DECISION",
+      "label": "Returnable?",
+      "description": "",
+      "lineIndex": 24,
+      "rawLine": "  - If non-returnable: deny refund, respond: \"This item is not eligible for return.\"",
+      "config": {
+        "logicSnippet": "If non-returnable: deny refund, respond: \"This item is not eligible for return.\" If returnable: approve store credit only (no cash refund).",
+        "sourceSection": "Step 3: Item Condition Check",
+        "sourceFormat": "prose",
+        "order": 25,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "If non-returnable: deny refund, respond: \"This item is not eligible for return.\" If returnable: approve store credit only (no cash refund)."
+      },
+      "position": {
+        "x": 1590,
+        "y": 2890
+      }
+    },
+    {
+      "id": "n-6f5dad6e",
+      "type": "RESOLUTION",
+      "label": "Deny Refund",
+      "description": "",
+      "lineIndex": 24,
+      "rawLine": "  - If non-returnable: deny refund, respond: \"This item is not eligible for return.\"",
+      "config": {
+        "logicSnippet": "This item is not eligible for return.",
+        "sourceSection": "Step 3: Item Condition Check",
+        "sourceFormat": "prose",
+        "order": 26,
+        "tool": null,
+        "value": null,
+        "outcome": "failure",
+        "pfgType": "resolution",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "This item is not eligible for return."
+      },
+      "position": {
+        "x": 2290,
+        "y": 3070
+      }
+    },
+    {
+      "id": "n-b688f379",
+      "type": "RESOLUTION",
+      "label": "Approve Store Credit",
+      "description": "",
+      "lineIndex": 25,
+      "rawLine": "  - If returnable: approve store credit only (no cash refund).",
+      "config": {
+        "logicSnippet": "approve store credit only (no cash refund).",
+        "sourceSection": "Step 3: Item Condition Check",
+        "sourceFormat": "prose",
+        "order": 27,
+        "tool": null,
+        "value": null,
+        "outcome": "success",
+        "pfgType": "resolution",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "approve store credit only (no cash refund)."
+      },
+      "position": {
+        "x": 1570,
+        "y": 3070
+      }
+    },
+    {
+      "id": "n-7cbe96b4",
+      "type": "RESOLUTION",
+      "label": "Approve Full Refund",
+      "description": "",
+      "lineIndex": 22,
+      "rawLine": "- If damaged or defective: approve full refund, log to RefundLedger tool.",
+      "config": {
+        "logicSnippet": "approve full refund",
+        "sourceSection": "Step 3: Item Condition Check",
+        "sourceFormat": "prose",
+        "order": 28,
+        "tool": null,
+        "value": null,
+        "outcome": "success",
+        "pfgType": "resolution",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "approve full refund"
+      },
+      "position": {
+        "x": 1950,
+        "y": 3070
+      }
+    },
+    {
+      "id": "n-7a1489a9",
+      "type": "TOOL",
+      "label": "MembershipCheck",
+      "description": "",
+      "lineIndex": 30,
+      "rawLine": "- Exception: if the customer has Platinum membership (check MembershipCheck tool), approve full cash refund regardless of defect status.",
+      "config": {
+        "logicSnippet": "check MembershipCheck tool",
+        "sourceSection": "Rule B — Standard Window Check",
+        "sourceFormat": "prose",
+        "order": 29,
+        "tool": "MembershipCheck",
+        "value": null,
+        "outcome": null,
+        "pfgType": "tool",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "check MembershipCheck tool"
+      },
+      "position": {
+        "x": 1930,
+        "y": 2530
+      }
+    },
+    {
+      "id": "n-8706e806",
+      "type": "DECISION",
+      "label": "Platinum Member?",
+      "description": "",
+      "lineIndex": 30,
+      "rawLine": "- Exception: if the customer has Platinum membership (check MembershipCheck tool), approve full cash refund regardless of defect status.",
+      "config": {
+        "logicSnippet": "Exception: if the customer has Platinum membership (check MembershipCheck tool), approve full cash refund regardless of defect status.",
+        "sourceSection": "Rule B — Standard Window Check",
+        "sourceFormat": "prose",
+        "order": 30,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 30,
+        "origLine": "- Exception: if the customer has Platinum membership (check MembershipCheck tool), approve full cash refund regardless of defect status.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "Exception: if the customer has Platinum membership (check MembershipCheck tool), approve full cash refund regardless of defect status."
+      },
+      "position": {
+        "x": 1930,
+        "y": 2710
+      }
+    },
+    {
+      "id": "n-644d1735",
+      "type": "DECISION",
+      "label": "Defect Reported < 7 Days?",
+      "description": "",
+      "lineIndex": 29,
+      "rawLine": "- Exception: if the item is defective AND the defect was reported within 7 days of delivery, approve full cash refund.",
+      "config": {
+        "logicSnippet": "Exception: if the item is defective AND the defect was reported within 7 days of delivery, approve full cash refund.",
+        "sourceSection": "Rule B — Standard Window Check",
+        "sourceFormat": "prose",
+        "order": 31,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 29,
+        "origLine": "- Exception: if the item is defective AND the defect was reported within 7 days of delivery, approve full cash refund.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "Exception: if the item is defective AND the defect was reported within 7 days of delivery, approve full cash refund."
+      },
+      "position": {
+        "x": 1930,
+        "y": 2890
+      }
+    },
+    {
+      "id": "n-a6c4911b",
+      "type": "RESOLUTION",
+      "label": "Rule B Store Credit",
+      "description": "",
+      "lineIndex": 28,
+      "rawLine": "- Items between 30-90 days are eligible for store credit only.",
+      "config": {
+        "logicSnippet": "Items between 30-90 days are eligible for store credit only.",
+        "sourceSection": "Rule B — Standard Window Check",
+        "sourceFormat": "prose",
+        "order": 32,
+        "tool": null,
+        "value": null,
+        "outcome": "success",
+        "pfgType": "resolution",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 28,
+        "origLine": "- Items between 30-90 days are eligible for store credit only.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "Items between 30-90 days are eligible for store credit only."
+      },
+      "position": {
+        "x": 2630,
+        "y": 3070
+      }
+    },
+    {
+      "id": "n-b8e79fdd",
+      "type": "DECISION",
+      "label": "Platinum Member (Rule C)?",
+      "description": "",
+      "lineIndex": 35,
+      "rawLine": "- Exception: if the customer has Platinum membership, apply Rule B instead.",
+      "config": {
+        "logicSnippet": "Exception: if the customer has Platinum membership, apply Rule B instead.",
+        "sourceSection": "Rule C — Late Claim",
+        "sourceFormat": "prose",
+        "order": 33,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 35,
+        "origLine": "- Exception: if the customer has Platinum membership, apply Rule B instead.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "Exception: if the customer has Platinum membership, apply Rule B instead."
+      },
+      "position": {
+        "x": 410,
+        "y": 2170
+      }
+    },
+    {
+      "id": "n-59fba857",
+      "type": "TOOL",
+      "label": "ManufacturerDefectDB",
+      "description": "",
+      "lineIndex": 34,
+      "rawLine": "- Exception: if the defect is a known manufacturer defect (call ManufacturerDefectDB tool), escalate to human supervisor.",
+      "config": {
+        "logicSnippet": "call ManufacturerDefectDB tool",
+        "sourceSection": "Rule C — Late Claim",
+        "sourceFormat": "prose",
+        "order": 34,
+        "tool": "ManufacturerDefectDB",
+        "value": null,
+        "outcome": null,
+        "pfgType": "tool",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "call ManufacturerDefectDB tool"
+      },
+      "position": {
+        "x": 410,
+        "y": 2710
+      }
+    },
+    {
+      "id": "n-55337d45",
+      "type": "DECISION",
+      "label": "Known Manufacturer Defect?",
+      "description": "",
+      "lineIndex": 34,
+      "rawLine": "- Exception: if the defect is a known manufacturer defect (call ManufacturerDefectDB tool), escalate to human supervisor.",
+      "config": {
+        "logicSnippet": "Exception: if the defect is a known manufacturer defect (call ManufacturerDefectDB tool), escalate to human supervisor.",
+        "sourceSection": "Rule C — Late Claim",
+        "sourceFormat": "prose",
+        "order": 35,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 34,
+        "origLine": "- Exception: if the defect is a known manufacturer defect (call ManufacturerDefectDB tool), escalate to human supervisor.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "Exception: if the defect is a known manufacturer defect (call ManufacturerDefectDB tool), escalate to human supervisor."
+      },
+      "position": {
+        "x": 410,
+        "y": 2890
+      }
+    },
+    {
+      "id": "n-4ceffdf7",
+      "type": "RESOLUTION",
+      "label": "Rule C Denial",
+      "description": "",
+      "lineIndex": 33,
+      "rawLine": "- Items over 90 days are not eligible for any refund or store credit.",
+      "config": {
+        "logicSnippet": "Items over 90 days are not eligible for any refund or store credit.",
+        "sourceSection": "Rule C — Late Claim",
+        "sourceFormat": "prose",
+        "order": 36,
+        "tool": null,
+        "value": null,
+        "outcome": "failure",
+        "pfgType": "resolution",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 33,
+        "origLine": "- Items over 90 days are not eligible for any refund or store credit.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "Items over 90 days are not eligible for any refund or store credit."
+      },
+      "position": {
+        "x": 750,
+        "y": 3070
+      }
+    },
+    {
+      "id": "n-83daa8ee",
+      "type": "CONFIG",
+      "label": "Refund Amounts",
+      "description": "",
+      "lineIndex": 38,
+      "rawLine": "- Full refund: original purchase price including tax.",
+      "config": {
+        "logicSnippet": "Full refund: original purchase price including tax. Store credit: original purchase price excluding tax. Partial refund: 50% of original purchase price excluding tax (used when both damage and non-returnable status apply — see Rule D).",
+        "sourceSection": "Refund Amounts",
+        "sourceFormat": "prose",
+        "order": 37,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "config",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "right",
+        "branchGroup": null,
+        "origSnippet": "Full refund: original purchase price including tax. Store credit: original purchase price excluding tax. Partial refund: 50% of original purchase price excluding tax (used when both damage and non-returnable status apply — see Rule D)."
+      },
+      "position": {
+        "x": 1290,
+        "y": 2900
+      }
+    },
+    {
+      "id": "n-7544f5bc",
+      "type": "RULE",
+      "label": "Rule D — Conflict Resolution",
+      "description": "",
+      "lineIndex": 43,
+      "rawLine": "- If an item is both damaged AND non-returnable, issue a partial refund (50%).",
+      "config": {
+        "logicSnippet": "If an item is both damaged AND non-returnable, issue a partial refund (50%). This overrides Rule C's denial if the claim is within 90 days.",
+        "sourceSection": "Rule D — Conflict Resolution",
+        "sourceFormat": "prose",
+        "order": 38,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "rule",
+        "inputRequired": null,
+        "ruleScope": "scoped",
+        "appliesTo": [
+          "n23",
+          "n25",
+          "n36"
+        ],
+        "personaScope": null,
+        "column": "right",
+        "branchGroup": null,
+        "origSnippet": "If an item is both damaged AND non-returnable, issue a partial refund (50%). This overrides Rule C's denial if the claim is within 90 days."
+      },
+      "position": {
+        "x": 770,
+        "y": 2360
+      }
+    },
+    {
+      "id": "n-742e4230",
+      "type": "DECISION",
+      "label": "Human Requested?",
+      "description": "",
+      "lineIndex": 48,
+      "rawLine": "- If the user requests to speak to a human at any point, escalate immediately.",
+      "config": {
+        "logicSnippet": "If the user requests to speak to a human at any point, escalate immediately.",
+        "sourceSection": "Escalation",
+        "sourceFormat": "prose",
+        "order": 39,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 48,
+        "origLine": "- If the user requests to speak to a human at any point, escalate immediately.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "If the user requests to speak to a human at any point, escalate immediately."
+      },
+      "position": {
+        "x": 50,
+        "y": 3610
+      }
+    },
+    {
+      "id": "n-a4f06aa3",
+      "type": "DECISION",
+      "label": "3+ Exceptions?",
+      "description": "",
+      "lineIndex": 49,
+      "rawLine": "- If three or more exceptions apply simultaneously, escalate to human supervisor.",
+      "config": {
+        "logicSnippet": "If three or more exceptions apply simultaneously, escalate to human supervisor.",
+        "sourceSection": "Escalation",
+        "sourceFormat": "prose",
+        "order": 40,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 49,
+        "origLine": "- If three or more exceptions apply simultaneously, escalate to human supervisor.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "If three or more exceptions apply simultaneously, escalate to human supervisor."
+      },
+      "position": {
+        "x": 390,
+        "y": 3610
+      }
+    },
+    {
+      "id": "n-8392f060",
+      "type": "LOGGING",
+      "label": "Log Decision",
+      "description": "",
+      "lineIndex": 52,
+      "rawLine": "- All decisions must be logged to RefundLedger with: order_id, decision, rule_applied, timestamp.",
+      "config": {
+        "logicSnippet": "All decisions must be logged to RefundLedger with: order_id, decision, rule_applied, timestamp.",
+        "sourceSection": "Logging",
+        "sourceFormat": "prose",
+        "order": 41,
+        "tool": "RefundLedger",
+        "value": null,
+        "outcome": null,
+        "pfgType": "logging",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 52,
+        "origLine": "- All decisions must be logged to RefundLedger with: order_id, decision, rule_applied, timestamp.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "All decisions must be logged to RefundLedger with: order_id, decision, rule_applied, timestamp."
+      },
+      "position": {
+        "x": 1950,
+        "y": 3250
+      }
+    },
+    {
+      "id": "n-32c6bb9c",
+      "type": "DECISION",
+      "label": "Log Success?",
+      "description": "",
+      "lineIndex": 47,
+      "rawLine": "- If the RefundLedger tool fails, escalate to human supervisor immediately.",
+      "config": {
+        "logicSnippet": "If the RefundLedger tool fails, escalate to human supervisor immediately.",
+        "sourceSection": "Escalation",
+        "sourceFormat": "prose",
+        "order": 42,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "decision",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 47,
+        "origLine": "- If the RefundLedger tool fails, escalate to human supervisor immediately.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "If the RefundLedger tool fails, escalate to human supervisor immediately."
+      },
+      "position": {
+        "x": 2270,
+        "y": 3430
+      }
+    },
+    {
+      "id": "n-74977a4b",
+      "type": "CONDITION",
+      "label": "Retry Log",
+      "description": "",
+      "lineIndex": 53,
+      "rawLine": "- Failed log attempts must be retried once before escalating.",
+      "config": {
+        "logicSnippet": "Failed log attempts must be retried once before escalating.",
+        "sourceSection": "Logging",
+        "sourceFormat": "prose",
+        "order": 43,
+        "tool": null,
+        "value": null,
+        "outcome": null,
+        "pfgType": "condition",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origRow": 53,
+        "origLine": "- Failed log attempts must be retried once before escalating.",
+        "origIndent": 0,
+        "origBlankBefore": false,
+        "origSnippet": "Failed log attempts must be retried once before escalating."
+      },
+      "position": {
+        "x": 1950,
+        "y": 3610
+      }
+    },
+    {
+      "id": "n-39d3e44c",
+      "type": "HANDOFF",
+      "label": "Escalate to Supervisor",
+      "description": "",
+      "lineIndex": 34,
+      "rawLine": "- Exception: if the defect is a known manufacturer defect (call ManufacturerDefectDB tool), escalate to human supervisor.",
+      "config": {
+        "logicSnippet": "escalate to human supervisor",
+        "sourceSection": "Escalation",
+        "sourceFormat": "prose",
+        "order": 44,
+        "tool": null,
+        "value": null,
+        "outcome": "escalation",
+        "pfgType": "handoff",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": "escalate to human supervisor"
+      },
+      "position": {
+        "x": 254.25347986219998,
+        "y": 4101.756838621557
+      }
+    },
+    {
+      "id": "n-12231ab7",
+      "type": "END",
+      "label": "End Session",
+      "description": "",
+      "config": {
+        "logicSnippet": "",
+        "sourceSection": "",
+        "sourceFormat": "prose",
+        "order": 45,
+        "tool": null,
+        "value": null,
+        "outcome": "success",
+        "pfgType": "end",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null,
+        "origSnippet": ""
+      },
+      "position": {
+        "x": 2272.563283947542,
+        "y": 3787.8545037350686
+      }
+    },
+    {
+      "id": "auto-log-1-65882d7f",
+      "type": "LOGGING",
+      "label": "Log Request Detail",
+      "description": "Logs the request detail decision.",
+      "config": {
+        "logicSnippet": "Log to RefundLedger with: order_id, decision, rule_applied, timestamp.",
+        "sourceSection": "Logging",
+        "sourceFormat": "bulleted_list",
+        "order": 6,
+        "tool": "RefundLedger",
+        "value": null,
+        "outcome": null,
+        "pfgType": "logging",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null
+      },
+      "position": {
+        "x": 1069.0759407370508,
+        "y": 1819.939795028211
+      }
+    },
+    {
+      "id": "auto-log-2-8e6ba0d7",
+      "type": "LOGGING",
+      "label": "Log Conduct Termination",
+      "description": "Logs the conduct termination decision.",
+      "config": {
+        "logicSnippet": "Log to RefundLedger with: order_id, decision, rule_applied, timestamp.",
+        "sourceSection": "Logging",
+        "sourceFormat": "bulleted_list",
+        "order": 10,
+        "tool": "RefundLedger",
+        "value": null,
+        "outcome": null,
+        "pfgType": "logging",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null
+      },
+      "position": {
+        "x": 1155.8576963396536,
+        "y": 1017.5854049219743
+      }
+    },
+    {
+      "id": "auto-log-3-309d5867",
+      "type": "LOGGING",
+      "label": "Log Order Not Found",
+      "description": "Logs the order not found decision.",
+      "config": {
+        "logicSnippet": "Log to RefundLedger with: order_id, decision, rule_applied, timestamp.",
+        "sourceSection": "Logging",
+        "sourceFormat": "bulleted_list",
+        "order": 17,
+        "tool": "RefundLedger",
+        "value": null,
+        "outcome": null,
+        "pfgType": "logging",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null
+      },
+      "position": {
+        "x": 730.8196123422965,
+        "y": 1809.4777653967362
+      }
+    },
+    {
+      "id": "auto-log-4-55337d45",
+      "type": "LOGGING",
+      "label": "Log Known Manufacturer Defect?",
+      "description": "Logs the known manufacturer defect? decision.",
+      "config": {
+        "logicSnippet": "Log to RefundLedger with: order_id, decision, rule_applied, timestamp.",
+        "sourceSection": "Logging",
+        "sourceFormat": "bulleted_list",
+        "order": 35,
+        "tool": "RefundLedger",
+        "value": null,
+        "outcome": null,
+        "pfgType": "logging",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null
+      },
+      "position": {
+        "x": 410,
+        "y": 3090
+      }
+    },
+    {
+      "id": "auto-log-5-32c6bb9c",
+      "type": "LOGGING",
+      "label": "Log Log Success?",
+      "description": "Logs the log success? decision.",
+      "config": {
+        "logicSnippet": "Log to RefundLedger with: order_id, decision, rule_applied, timestamp.",
+        "sourceSection": "Logging",
+        "sourceFormat": "bulleted_list",
+        "order": 42,
+        "tool": "RefundLedger",
+        "value": null,
+        "outcome": null,
+        "pfgType": "logging",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null
+      },
+      "position": {
+        "x": 2270,
+        "y": 3630
+      }
+    },
+    {
+      "id": "auto-log-6-742e4230",
+      "type": "LOGGING",
+      "label": "Log Human Requested?",
+      "description": "Logs the human requested? decision.",
+      "config": {
+        "logicSnippet": "Log to RefundLedger with: order_id, decision, rule_applied, timestamp.",
+        "sourceSection": "Logging",
+        "sourceFormat": "bulleted_list",
+        "order": 39,
+        "tool": "RefundLedger",
+        "value": null,
+        "outcome": null,
+        "pfgType": "logging",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null
+      },
+      "position": {
+        "x": 50,
+        "y": 3810
+      }
+    },
+    {
+      "id": "auto-log-7-a4f06aa3",
+      "type": "LOGGING",
+      "label": "Log 3+ Exceptions?",
+      "description": "Logs the 3+ exceptions? decision.",
+      "config": {
+        "logicSnippet": "Log to RefundLedger with: order_id, decision, rule_applied, timestamp.",
+        "sourceSection": "Logging",
+        "sourceFormat": "bulleted_list",
+        "order": 40,
+        "tool": "RefundLedger",
+        "value": null,
+        "outcome": null,
+        "pfgType": "logging",
+        "inputRequired": null,
+        "ruleScope": null,
+        "appliesTo": null,
+        "personaScope": null,
+        "column": "center",
+        "branchGroup": null
+      },
+      "position": {
+        "x": 390,
+        "y": 3810
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "e1",
+      "source": "n-eb063fe5",
+      "target": "n-8f55aa12",
+      "condition": "Defines Role"
+    },
+    {
+      "id": "e2",
+      "source": "n-eb063fe5",
+      "target": "n-ceda4632",
+      "condition": "Triggers Agent"
+    },
+    {
+      "id": "e3",
+      "source": "n-ceda4632",
+      "target": "n-9458e1a8",
+      "condition": "Start Phase 1"
+    },
+    {
+      "id": "e4",
+      "source": "n-9458e1a8",
+      "target": "n-5ec53910",
+      "condition": "Validate Input"
+    },
+    {
+      "id": "e5",
+      "source": "n-5ec53910",
+      "target": "n-65882d7f",
+      "condition": "Empty or < 10 chars"
+    },
+    {
+      "id": "e7",
+      "source": "n-5ec53910",
+      "target": "n-e4a1049d",
+      "condition": "Input valid"
+    },
+    {
+      "id": "e8",
+      "source": "n-e4a1049d",
+      "target": "n-e70998f1",
+      "condition": "Check toxicity"
+    },
+    {
+      "id": "e9",
+      "source": "n-e70998f1",
+      "target": "n-e4a1049d",
+      "condition": "Provides result"
+    },
+    {
+      "id": "e10",
+      "source": "n-e4a1049d",
+      "target": "n-8e6ba0d7",
+      "condition": "Abusive language"
+    },
+    {
+      "id": "e12",
+      "source": "n-e4a1049d",
+      "target": "n-d9360d7f",
+      "condition": "Language acceptable"
+    },
+    {
+      "id": "e13",
+      "source": "n-d9360d7f",
+      "target": "n-3a5abe1e",
+      "condition": "Check ID"
+    },
+    {
+      "id": "e14",
+      "source": "n-3a5abe1e",
+      "target": "n-fda6c36f",
+      "condition": "ID missing"
+    },
+    {
+      "id": "e15",
+      "source": "n-fda6c36f",
+      "target": "n-89c00182",
+      "condition": "ID provided"
+    },
+    {
+      "id": "e16",
+      "source": "n-3a5abe1e",
+      "target": "n-89c00182",
+      "condition": "ID present"
+    },
+    {
+      "id": "e17",
+      "source": "n-89c00182",
+      "target": "n-01cab002",
+      "condition": "Provides result"
+    },
+    {
+      "id": "e18",
+      "source": "n-01cab002",
+      "target": "n-309d5867",
+      "condition": "Not found"
+    },
+    {
+      "id": "e20",
+      "source": "n-01cab002",
+      "target": "n-612c0dae",
+      "condition": "Order found"
+    },
+    {
+      "id": "e21",
+      "source": "n-612c0dae",
+      "target": "n-5a2bb5a3",
+      "condition": "> 90 days"
+    },
+    {
+      "id": "e22",
+      "source": "n-612c0dae",
+      "target": "n-007744e9",
+      "condition": "30-90 days"
+    },
+    {
+      "id": "e23",
+      "source": "n-612c0dae",
+      "target": "n-ec17c07f",
+      "condition": "< 30 days"
+    },
+    {
+      "id": "e24",
+      "source": "n-ec17c07f",
+      "target": "n-a7e99dea",
+      "condition": "Ask condition"
+    },
+    {
+      "id": "e25",
+      "source": "n-a7e99dea",
+      "target": "n-a7ad7c61",
+      "condition": "User responds"
+    },
+    {
+      "id": "e26",
+      "source": "n-a7ad7c61",
+      "target": "n-7cbe96b4",
+      "condition": "Damaged/Defective"
+    },
+    {
+      "id": "e27",
+      "source": "n-a7ad7c61",
+      "target": "n-ec587310",
+      "condition": "Unwanted"
+    },
+    {
+      "id": "e28",
+      "source": "n-ec587310",
+      "target": "n-513febde",
+      "condition": "Provides result"
+    },
+    {
+      "id": "e29",
+      "source": "n-513febde",
+      "target": "n-6f5dad6e",
+      "condition": "Non-returnable"
+    },
+    {
+      "id": "e30",
+      "source": "n-513febde",
+      "target": "n-b688f379",
+      "condition": "Returnable"
+    },
+    {
+      "id": "e31",
+      "source": "n-007744e9",
+      "target": "n-7a1489a9",
+      "condition": "Check membership"
+    },
+    {
+      "id": "e32",
+      "source": "n-7a1489a9",
+      "target": "n-8706e806",
+      "condition": "Provides result"
+    },
+    {
+      "id": "e33",
+      "source": "n-8706e806",
+      "target": "n-7cbe96b4",
+      "condition": "Platinum member"
+    },
+    {
+      "id": "e34",
+      "source": "n-8706e806",
+      "target": "n-644d1735",
+      "condition": "Standard member"
+    },
+    {
+      "id": "e35",
+      "source": "n-644d1735",
+      "target": "n-7cbe96b4",
+      "condition": "Defect < 7 days"
+    },
+    {
+      "id": "e36",
+      "source": "n-644d1735",
+      "target": "n-a6c4911b",
+      "condition": "No early defect"
+    },
+    {
+      "id": "e37",
+      "source": "n-5a2bb5a3",
+      "target": "n-b8e79fdd",
+      "condition": "Check membership"
+    },
+    {
+      "id": "e38",
+      "source": "n-b8e79fdd",
+      "target": "n-007744e9",
+      "condition": "Platinum member"
+    },
+    {
+      "id": "e39",
+      "source": "n-b8e79fdd",
+      "target": "n-59fba857",
+      "condition": "Standard member"
+    },
+    {
+      "id": "e40",
+      "source": "n-59fba857",
+      "target": "n-55337d45",
+      "condition": "Provides result"
+    },
+    {
+      "id": "e42",
+      "source": "n-55337d45",
+      "target": "n-4ceffdf7",
+      "condition": "No known defect"
+    },
+    {
+      "id": "e43",
+      "source": "n-6f5dad6e",
+      "target": "n-8392f060",
+      "condition": "Log denial"
+    },
+    {
+      "id": "e44",
+      "source": "n-b688f379",
+      "target": "n-8392f060",
+      "condition": "Log credit"
+    },
+    {
+      "id": "e45",
+      "source": "n-7cbe96b4",
+      "target": "n-8392f060",
+      "condition": "Log refund"
+    },
+    {
+      "id": "e46",
+      "source": "n-a6c4911b",
+      "target": "n-8392f060",
+      "condition": "Log credit"
+    },
+    {
+      "id": "e47",
+      "source": "n-4ceffdf7",
+      "target": "n-8392f060",
+      "condition": "Log denial"
+    },
+    {
+      "id": "e48",
+      "source": "n-8392f060",
+      "target": "n-32c6bb9c",
+      "condition": "Check log status"
+    },
+    {
+      "id": "e50",
+      "source": "n-32c6bb9c",
+      "target": "n-74977a4b",
+      "condition": "Failure"
+    },
+    {
+      "id": "e51",
+      "source": "n-74977a4b",
+      "target": "n-8392f060",
+      "condition": "Retry once"
+    },
+    {
+      "id": "e52",
+      "source": "n-74977a4b",
+      "target": "n-39d3e44c",
+      "condition": "Retry failed"
+    },
+    {
+      "id": "e55",
+      "source": "n-83daa8ee",
+      "target": "n-b688f379",
+      "condition": "Defines amount"
+    },
+    {
+      "id": "e56",
+      "source": "n-83daa8ee",
+      "target": "n-7cbe96b4",
+      "condition": "Defines amount"
+    },
+    {
+      "id": "e57",
+      "source": "n-7544f5bc",
+      "target": "n-a7ad7c61",
+      "condition": "Governs"
+    },
+    {
+      "id": "e58",
+      "source": "n-7544f5bc",
+      "target": "n-513febde",
+      "condition": "Governs"
+    },
+    {
+      "id": "e59",
+      "source": "n-7544f5bc",
+      "target": "n-4ceffdf7",
+      "condition": "Governs"
+    },
+    {
+      "id": "auto-e159",
+      "source": "n-8f55aa12",
+      "target": "n-eb063fe5",
+      "condition": "Defines Agent Role"
+    },
+    {
+      "id": "auto-log-e1a",
+      "source": "n-65882d7f",
+      "target": "auto-log-1-65882d7f",
+      "condition": "Log Request Detail"
+    },
+    {
+      "id": "auto-log-e1b",
+      "source": "auto-log-1-65882d7f",
+      "target": "n-f108d241",
+      "condition": "Terminate"
+    },
+    {
+      "id": "auto-log-e2a",
+      "source": "n-8e6ba0d7",
+      "target": "auto-log-2-8e6ba0d7",
+      "condition": "Log Conduct Termination"
+    },
+    {
+      "id": "auto-log-e2b",
+      "source": "auto-log-2-8e6ba0d7",
+      "target": "n-12231b16",
+      "condition": "End session"
+    },
+    {
+      "id": "auto-log-e3a",
+      "source": "n-309d5867",
+      "target": "auto-log-3-309d5867",
+      "condition": "Log Order Not Found"
+    },
+    {
+      "id": "auto-log-e3b",
+      "source": "auto-log-3-309d5867",
+      "target": "n-f108d241",
+      "condition": "Terminate"
+    },
+    {
+      "id": "auto-log-e4a",
+      "source": "n-55337d45",
+      "target": "auto-log-4-55337d45",
+      "condition": "Log Known Manufacturer Defect?"
+    },
+    {
+      "id": "auto-log-e4b",
+      "source": "auto-log-4-55337d45",
+      "target": "n-39d3e44c",
+      "condition": "Known defect"
+    },
+    {
+      "id": "auto-log-e5a",
+      "source": "n-32c6bb9c",
+      "target": "auto-log-5-32c6bb9c",
+      "condition": "Log Log Success?"
+    },
+    {
+      "id": "auto-log-e5b",
+      "source": "auto-log-5-32c6bb9c",
+      "target": "n-12231ab7",
+      "condition": "Success"
+    },
+    {
+      "id": "auto-log-e6a",
+      "source": "n-742e4230",
+      "target": "auto-log-6-742e4230",
+      "condition": "Log Human Requested?"
+    },
+    {
+      "id": "auto-log-e6b",
+      "source": "auto-log-6-742e4230",
+      "target": "n-39d3e44c",
+      "condition": "Human requested"
+    },
+    {
+      "id": "auto-log-e7a",
+      "source": "n-a4f06aa3",
+      "target": "auto-log-7-a4f06aa3",
+      "condition": "Log 3+ Exceptions?"
+    },
+    {
+      "id": "auto-log-e7b",
+      "source": "auto-log-7-a4f06aa3",
+      "target": "n-39d3e44c",
+      "condition": "3+ exceptions"
+    }
+  ],
+  "version": "1.2",
+  "createdAt": "2026-03-09T11:58:21.516Z",
+  "updatedAt": "2026-03-09T11:58:21.516Z",
+  "_postParseViolations": [
+    {
+      "type": "coverage_gap",
+      "severity": "warning",
+      "message": "Lines 9-54 have no corresponding nodes",
+      "lineRange": [
+        9,
+        54
+      ]
+    },
+    {
+      "type": "low_coverage",
+      "severity": "error",
+      "message": "Only 5% of source lines are represented in the graph (2/43 non-blank lines, threshold: 70%)"
+    },
+    {
+      "type": "verbatim_violation",
+      "severity": "warning",
+      "message": "Node \"Order Age?\" has a logic_snippet not found verbatim in source",
+      "nodeId": "n-612c0dae"
+    },
+    {
+      "type": "verbatim_violation",
+      "severity": "warning",
+      "message": "Node \"Condition Type?\" has a logic_snippet not found verbatim in source",
+      "nodeId": "n-a7ad7c61"
+    },
+    {
+      "type": "verbatim_violation",
+      "severity": "warning",
+      "message": "Node \"Returnable?\" has a logic_snippet not found verbatim in source",
+      "nodeId": "n-513febde"
+    },
+    {
+      "type": "verbatim_violation",
+      "severity": "warning",
+      "message": "Node \"Refund Amounts\" has a logic_snippet not found verbatim in source",
+      "nodeId": "n-83daa8ee"
+    },
+    {
+      "type": "verbatim_violation",
+      "severity": "warning",
+      "message": "Node \"Rule D — Conflict Resolution\" has a logic_snippet not found verbatim in source",
+      "nodeId": "n-7544f5bc"
+    }
+  ],
+  "sourceFormat": "json-compact",
+  "settings": {
+    "llmProvider": "gemini",
+    "model": "gemini-3-flash-preview",
+    "temperature": 0
+  },
+  "currentVersionId": "version-1773057546757-dneap"
+}
