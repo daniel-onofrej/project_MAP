@@ -1,6 +1,6 @@
 {
   "name": "map",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Self-hosted AI agent graph editor and OpenShell runtime platform with bidirectional prompt-flow conversion, version control, real-time collaboration, and MCP integration",
   "keywords": [
     "ai",

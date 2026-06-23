@@ -13,6 +13,14 @@ Commit messages follow the [Conventional Commits](https://www.conventionalcommit
 | `feat!:` / `fix!:` / `BREAKING CHANGE:` | Breaking change → bumps **major** version |
 | `chore:`, `docs:`, `refactor:`, `style:` | No version bump |
 
+## [0.2.1](https://github.com/daniel-onofrej/project_MAP/compare/v0.2.0...v0.2.1) (2026-06-23)
+
+
+### Features
+
+* add OpenShell runtime platform ([0d34217](https://github.com/daniel-onofrej/project_MAP/commit/0d342172a0a988e597227b1a6cb55ba7359e9d7d))
+* minor fix ([c54abe3](https://github.com/daniel-onofrej/project_MAP/commit/c54abe3f564be4de847435c66126715a578832db))
+
 ## [0.2.0] — OpenShell runtime platform
 
 ### Added
