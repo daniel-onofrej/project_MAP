@@ -27,6 +27,7 @@ const LOADERS: Record<string, () => Promise<any>> = {
   'guides/audit-risky-actions': () => import('@/content/wiki/guides/audit-risky-actions'),
   'guides/export-and-share': () => import('@/content/wiki/guides/export-and-share'),
   'guides/debug-failed-generation': () => import('@/content/wiki/guides/debug-failed-generation'),
+  'guides/deploy-openshell-runtime': () => import('@/content/wiki/guides/deploy-openshell-runtime'),
   // Reference
   'reference/node-types': () => import('@/content/wiki/reference/node-types'),
   'reference/keyboard-shortcuts': () => import('@/content/wiki/reference/keyboard-shortcuts'),
@@ -35,6 +36,7 @@ const LOADERS: Record<string, () => Promise<any>> = {
   'reference/ai-providers': () => import('@/content/wiki/reference/ai-providers'),
   'reference/permissions-and-roles': () => import('@/content/wiki/reference/permissions-and-roles'),
   'reference/mcp-api': () => import('@/content/wiki/reference/mcp-api'),
+  'reference/openshell-runtime-package': () => import('@/content/wiki/reference/openshell-runtime-package'),
   'reference/glossary': () => import('@/content/wiki/reference/glossary'),
   // Concepts
   'concepts/prompt-graph-sync': () => import('@/content/wiki/concepts/prompt-graph-sync'),

@@ -12,6 +12,7 @@ import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprot
 
 const TOKEN = process.env.MCP_AUTH_TOKEN;
 const SERVER_URL = process.env.MCP_SERVER_URL || 'http://localhost:3100/mcp';
+const APP_VERSION = process.env.APP_VERSION || '0.1.0';
 
 if (!TOKEN) {
   process.stderr.write(
@@ -28,13 +29,13 @@ async function main() {
     },
   });
 
-  const client = new Client({ name: 'stdio-bridge', version: '1.0.0' });
+  const client = new Client({ name: 'stdio-bridge', version: APP_VERSION });
   await client.connect(httpTransport);
 
   const { tools } = await client.listTools();
 
   const server = new Server(
-    { name: 'MAP', version: '1.0.0' },
+    { name: 'MAP', version: APP_VERSION },
     { capabilities: { tools: {} } }
   );
 

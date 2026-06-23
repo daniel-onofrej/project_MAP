@@ -8,6 +8,48 @@
       "when": 1776274493576,
       "tag": "0000_damp_the_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780502400000,
+      "tag": "0001_openshell_sandboxes",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780588800000,
+      "tag": "0002_runtime_v2",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780592400000,
+      "tag": "0003_runtime_gateways",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780596000000,
+      "tag": "0004_deployment_provider_credentials",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780599600000,
+      "tag": "0005_graph_runtime_assets",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780603200000,
+      "tag": "0006_runtime_thinking_messages",
+      "breakpoints": true
     }
   ]
 }

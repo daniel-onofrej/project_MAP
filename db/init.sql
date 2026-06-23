@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS agents (
   connections JSONB NOT NULL DEFAULT '[]',    -- Connection[]
   annotations JSONB NOT NULL DEFAULT '[]',
   settings JSONB NOT NULL DEFAULT '{}',       -- AgentSettings (no api_key stored)
+  runtime_package JSONB NOT NULL DEFAULT '{}',
   version TEXT,
   source_format TEXT,
   generated_with TEXT,
@@ -84,6 +85,7 @@ CREATE INDEX IF NOT EXISTS agents_updated_at_idx ON agents(updated_at DESC);
 ALTER TABLE agents ADD COLUMN IF NOT EXISTS pull_count INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE agents ADD COLUMN IF NOT EXISTS last_pulled_at TIMESTAMPTZ;
 ALTER TABLE agents ADD COLUMN IF NOT EXISTS last_pulled_by TEXT;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS runtime_package JSONB NOT NULL DEFAULT '{}';
 
 -- ============================================================
 -- PROMPT AGENT LINKS  (which agents use which prompt-agent)
@@ -107,6 +109,7 @@ CREATE TABLE IF NOT EXISTS agent_versions (
   version_label TEXT NOT NULL,
   nodes JSONB NOT NULL,
   connections JSONB NOT NULL,
+  runtime_package JSONB NOT NULL DEFAULT '{}',
   commit_message TEXT,
   created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   parent_version_id UUID REFERENCES agent_versions(id) ON DELETE SET NULL,
@@ -114,12 +117,126 @@ CREATE TABLE IF NOT EXISTS agent_versions (
 );
 
 CREATE INDEX IF NOT EXISTS agent_versions_agent_id_idx ON agent_versions(agent_id, created_at DESC);
+ALTER TABLE agent_versions ADD COLUMN IF NOT EXISTS runtime_package JSONB NOT NULL DEFAULT '{}';
 
 -- Add deferred FK from agents to agent_versions
 ALTER TABLE agents
   ADD CONSTRAINT fk_current_version
   FOREIGN KEY (current_version_id) REFERENCES agent_versions(id)
   DEFERRABLE INITIALLY DEFERRED;
+
+-- ============================================================
+-- AGENT DEPLOYMENTS  (OpenShell persistent sandboxes)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS runtime_gateways (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  endpoint TEXT NOT NULL,
+  mode TEXT NOT NULL DEFAULT 'custom'
+    CHECK (mode IN ('local-docker', 'remote-docker', 'kubernetes', 'custom')),
+  description TEXT,
+  auth_mode TEXT NOT NULL DEFAULT 'local'
+    CHECK (auth_mode IN ('local', 'mtls', 'token', 'custom')),
+  config JSONB NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'unknown'
+    CHECK (status IN ('unknown', 'ready', 'error')),
+  last_verified_at TIMESTAMPTZ,
+  last_error TEXT,
+  is_default BOOLEAN NOT NULL DEFAULT false,
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS runtime_gateways_created_by_idx ON runtime_gateways(created_by);
+CREATE INDEX IF NOT EXISTS runtime_gateways_group_id_idx ON runtime_gateways(group_id);
+CREATE INDEX IF NOT EXISTS runtime_gateways_status_idx ON runtime_gateways(status);
+
+CREATE TABLE IF NOT EXISTS agent_deployments (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  agent_version_id UUID REFERENCES agent_versions(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'provisioning', 'ready', 'stopped', 'error', 'deleting')),
+  openshell_sandbox_name TEXT NOT NULL,
+  runtime_kind TEXT NOT NULL DEFAULT 'custom'
+    CHECK (runtime_kind IN ('codex', 'claude-code', 'opencode', 'gemini-cli', 'custom')),
+  runtime_command TEXT NOT NULL,
+  runtime_package JSONB NOT NULL DEFAULT '{}',
+  manifest_version INTEGER NOT NULL DEFAULT 1,
+  runtime_id TEXT NOT NULL DEFAULT 'custom',
+  sandbox_image TEXT NOT NULL DEFAULT 'base',
+  execution_mode TEXT NOT NULL DEFAULT 'oneshot',
+  provider_mode TEXT NOT NULL DEFAULT 'legacy-env',
+  gateway_id TEXT NOT NULL DEFAULT 'map',
+  preflight_report JSONB NOT NULL DEFAULT '{}',
+  policy_revision INTEGER NOT NULL DEFAULT 1,
+  observed_phase TEXT,
+  runtime_manifest JSONB NOT NULL DEFAULT '{}',
+  policy_yaml TEXT NOT NULL,
+  pinned_snapshot JSONB NOT NULL,
+  pinned_prompt TEXT NOT NULL,
+  created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+  last_error TEXT,
+  last_log TEXT,
+  deployed_at TIMESTAMPTZ,
+  stopped_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS agent_deployments_agent_id_idx ON agent_deployments(agent_id);
+CREATE INDEX IF NOT EXISTS agent_deployments_created_by_idx ON agent_deployments(created_by);
+CREATE INDEX IF NOT EXISTS agent_deployments_group_id_idx ON agent_deployments(group_id);
+CREATE INDEX IF NOT EXISTS agent_deployments_status_idx ON agent_deployments(status);
+CREATE INDEX IF NOT EXISTS agent_deployments_runtime_id_idx ON agent_deployments(runtime_id);
+
+CREATE TABLE IF NOT EXISTS deployment_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deployment_id TEXT NOT NULL REFERENCES agent_deployments(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system', 'tool', 'thinking')),
+  content TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'success'
+    CHECK (status IN ('pending', 'success', 'error')),
+  metadata JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS deployment_messages_deployment_id_idx
+  ON deployment_messages(deployment_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS deployment_providers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deployment_id TEXT NOT NULL REFERENCES agent_deployments(id) ON DELETE CASCADE,
+  provider_name TEXT NOT NULL,
+  provider_type TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'llm'
+    CHECK (role IN ('llm', 'tool', 'mcp', 'source-control', 'data', 'custom')),
+  credential_keys TEXT[] NOT NULL DEFAULT '{}',
+  attach_status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (attach_status IN ('pending', 'attached', 'detached', 'error')),
+  config_snapshot JSONB NOT NULL DEFAULT '{}',
+  last_verified_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS deployment_providers_deployment_id_idx ON deployment_providers(deployment_id);
+CREATE INDEX IF NOT EXISTS deployment_providers_name_idx ON deployment_providers(provider_name);
+
+CREATE TABLE IF NOT EXISTS deployment_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deployment_id TEXT NOT NULL REFERENCES agent_deployments(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL,
+  message TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS deployment_events_deployment_id_idx
+  ON deployment_events(deployment_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS deployment_events_type_idx ON deployment_events(event_type);
 
 -- ============================================================
 -- AGENT SHARES  (explicit per-user sharing beyond group access)
@@ -254,6 +371,24 @@ DO $$ BEGIN
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+DO $$ BEGIN
+  CREATE TRIGGER trg_agent_deployments_updated_at
+    BEFORE UPDATE ON agent_deployments
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TRIGGER trg_runtime_gateways_updated_at
+    BEFORE UPDATE ON runtime_gateways
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TRIGGER trg_deployment_providers_updated_at
+    BEFORE UPDATE ON deployment_providers
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- ============================================================
 -- MCP API TOKENS
 -- ============================================================
@@ -272,16 +407,5 @@ CREATE TABLE IF NOT EXISTS mcp_tokens (
 CREATE INDEX IF NOT EXISTS mcp_tokens_token_hash_idx ON mcp_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS mcp_tokens_created_by_idx ON mcp_tokens(created_by);
 
--- ============================================================
--- SEED: default admin user (only inserted if no admin exists)
--- Credentials: admin@map.local / admin123
--- To change: log in and update via /admin/users, or change the
--- hash below (generate with: node -e "console.log(require('bcryptjs').hashSync('yourpassword',12))")
--- ============================================================
-INSERT INTO users (email, password_hash, name, role)
-SELECT
-  'admin@map.local',
-  '$2b$12$NLLUXWMsFydcLe6LssUZIOwvqPOw/rweTHPf7LaFPPAfgEw/2XmuC',
-  'Admin',
-  'admin'
-WHERE NOT EXISTS (SELECT 1 FROM users WHERE role = 'admin');
+-- No default admin user is seeded. Create the first admin through POST /api/users
+-- while the users table is empty, then all later user creation is admin-only.

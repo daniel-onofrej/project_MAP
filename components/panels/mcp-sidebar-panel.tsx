@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Wifi, WifiOff, Copy, Check, ChevronDown, ChevronRight, Key } from 'lucide-react'
+import { Wifi, WifiOff, Copy, Check, ChevronDown, ChevronRight, Key, Trash2 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { cn } from '@/lib/utils'
 
@@ -199,6 +199,8 @@ export function McpSidebarPanel({ mcpServerUrl = 'http://localhost:3100' }: McpS
   }
 
   const revokeToken = async (id: string) => {
+    const token = tokens.find(t => t.id === id)
+    if (!confirm(`Remove API token "${token?.name ?? 'this token'}" forever? Clients using it will stop authenticating immediately.`)) return
     const res = await fetch(`/api/mcp-tokens/${id}`, { method: 'DELETE' })
     if (res.ok) setTokens(prev => prev.filter(t => t.id !== id))
   }
@@ -296,7 +298,14 @@ export function McpSidebarPanel({ mcpServerUrl = 'http://localhost:3100' }: McpS
                     {t.expiresAt ? ` · Expires ${new Date(t.expiresAt).toLocaleDateString()}` : ''}
                   </p>
                 </div>
-                <button onClick={() => revokeToken(t.id)} className="shrink-0 text-muted-foreground hover:text-destructive text-[10px] mt-0.5">×</button>
+                <button
+                  onClick={() => revokeToken(t.id)}
+                  className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded border border-destructive/40 px-1.5 py-1 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/10"
+                  title="Remove token forever"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Remove
+                </button>
               </div>
             ))}
           </div>

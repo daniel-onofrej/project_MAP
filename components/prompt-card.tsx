@@ -45,6 +45,8 @@ interface PromptItem {
   lastChangeSummary?: string
   linkedAgents?: { id: string; name: string }[]
   pullCount?: number
+  deploymentCount?: number
+  latestDeploymentStatus?: string | null
 }
 
 interface VersionEntry {
@@ -156,6 +158,13 @@ export function PromptCard({
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
             <span>{relativeTime(prompt.updatedAt)}</span>
+            <span>{prompt.linkedAgents?.length ?? 0} agents using</span>
+            {(prompt.deploymentCount ?? 0) > 0 && (
+              <span>
+                {prompt.deploymentCount} runtime{prompt.deploymentCount === 1 ? '' : 's'}
+                {prompt.latestDeploymentStatus ? ` · ${prompt.latestDeploymentStatus}` : ''}
+              </span>
+            )}
             {(prompt.pullCount ?? 0) > 0 && <span>{prompt.pullCount} pulls</span>}
           </div>
         </div>

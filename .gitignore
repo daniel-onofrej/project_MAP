@@ -44,7 +44,11 @@ desktop.ini
 # Logs
 # ────────────────────────────────────────
 *.log
-logs/
+/logs/
+# Ignore generated log directory contents anywhere, while keeping source routes
+# such as app/api/deployments/[id]/logs/route.ts trackable.
+**/logs/*
+!app/api/deployments/\[id\]/logs/route.ts
 
 # ────────────────────────────────────────
 # TypeScript
@@ -71,3 +75,4 @@ redis-data/
 # Tooling
 # ────────────────────────────────────────
 .superpowers/
+.openshell-cache/

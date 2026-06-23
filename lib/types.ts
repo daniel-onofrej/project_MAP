@@ -1,3 +1,5 @@
+import type { RuntimePackage } from './deployments/types';
+
 export type NodeType =
   | 'AGENT'
   | 'RULE'
@@ -233,6 +235,8 @@ export interface AgentConfig {
   permissionsManifest?: PermissionsManifest;
   /** Group/workspace this agent belongs to (null = personal) */
   groupId?: string | null;
+  /** Graph-owned runtime assets inherited by OpenShell deployments */
+  runtimePackage?: RuntimePackage;
 }
 
 export interface MultiAgentDetection {

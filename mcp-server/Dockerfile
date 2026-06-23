@@ -1,6 +1,8 @@
 FROM node:20.19-alpine3.21 AS builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
+ARG APP_VERSION=0.1.0
+ENV APP_VERSION=${APP_VERSION}
 
 COPY package.json package-lock.json* ./
 # Install ALL deps (including devDeps) so esbuild is available for the build step
@@ -14,6 +16,8 @@ FROM node:20.19-alpine3.21
 # curl is required for the HEALTHCHECK below
 RUN apk add --no-cache libc6-compat curl
 WORKDIR /app
+ARG APP_VERSION=0.1.0
+ENV APP_VERSION=${APP_VERSION}
 
 # Create a non-root user before copying any files
 RUN addgroup --system --gid 1001 mcpgroup && \
@@ -33,9 +37,9 @@ USER mcpuser
 EXPOSE 3100
 ENV NODE_ENV=production
 
-# K8s liveness / readiness probes hit /health.
+# K8s liveness / readiness probes hit /api/status.
 # Docker Compose uses this HEALTHCHECK directly.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD curl -f http://localhost:3100/health || exit 1
+  CMD curl -f http://localhost:3100/api/status || exit 1
 
 CMD ["node", "dist/index.js"]

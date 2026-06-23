@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ArrowRight, Clock, TrendingUp } from 'lucide-react'
+import { ArrowRight, Clock, ShieldCheck, TerminalSquare, TrendingUp } from 'lucide-react'
 import { getSessionUser } from '@/lib/auth/session'
 import { WikiLayout } from '@/components/wiki/wiki-layout'
 import { HeroBanner } from '@/components/wiki/mockups'
@@ -17,7 +17,7 @@ import {
 export const metadata: Metadata = {
   title: 'Wiki — MAP Agent Architect',
   description:
-    'Tutorials, how-to guides, reference material, and concept explanations for MAP — the visual AI agent graph editor.',
+    'Tutorials, how-to guides, reference material, and concept explanations for MAP — the visual agent graph editor and OpenShell runtime platform.',
 }
 
 export const dynamic = 'force-dynamic'
@@ -33,12 +33,12 @@ export default async function WikiLandingPage() {
           MAP Wiki
         </p>
         <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.1] mb-5 max-w-3xl">
-          Learn to build, inspect, and share prompt graphs.
+          Learn to build, deploy, and operate agent runtimes.
         </h1>
         <p className="text-base leading-7 text-muted-foreground max-w-[58ch] mb-8">
-          Everything you need to go from a raw prompt to a production-ready agent graph —
-          step-by-step tutorials, focused how-tos, exhaustive reference, and the conceptual
-          model behind it all.
+          Everything you need to go from a raw prompt to a production-ready graph and a
+          managed OpenShell runtime — step-by-step tutorials, focused how-tos, exhaustive
+          reference, and the conceptual model behind it all.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link
@@ -56,6 +56,52 @@ export default async function WikiLandingPage() {
           </Link>
         </div>
       </HeroBanner>
+
+      <section className="mt-10 rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-400 mb-2">
+              New OpenShell Runtime
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight mb-3">
+              Deploy prompt snapshots into managed OpenShell sandboxes.
+            </h2>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Learn how MAP pins graph prompts, packages runtime files, maps provider
+              credentials, applies OpenShell policy YAML, and exposes chat, logs, lifecycle
+              controls, and CLI operations from the app.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[360px]">
+            <Link
+              href="/wiki/guides/deploy-openshell-runtime"
+              className="group rounded-lg border border-border/40 bg-card/50 p-4 hover:border-cyan-500/40 hover:bg-card/80 transition-colors"
+            >
+              <TerminalSquare className="mb-3 h-5 w-5 text-cyan-400" />
+              <p className="text-sm font-semibold mb-1">Deploy a runtime</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Create, operate, chat, fetch logs, and use the in-app OpenShell CLI.
+              </p>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs text-cyan-400">
+                Open guide <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </Link>
+            <Link
+              href="/wiki/reference/openshell-runtime-package"
+              className="group rounded-lg border border-border/40 bg-card/50 p-4 hover:border-cyan-500/40 hover:bg-card/80 transition-colors"
+            >
+              <ShieldCheck className="mb-3 h-5 w-5 text-cyan-400" />
+              <p className="text-sm font-semibold mb-1">Runtime package reference</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Review env, secretEnv, providers, scripts, files, ports, and policy behavior.
+              </p>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs text-cyan-400">
+                Open reference <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       <section className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {(['learn', 'guides', 'reference', 'concepts'] as WikiGroup[]).map((g) => {

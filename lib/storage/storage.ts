@@ -5,6 +5,7 @@
  */
 import type { AgentConfig, GraphRuleSettings, ProviderConfig } from '../types';
 import { DEFAULT_GRAPH_RULE_SETTINGS, DEFAULT_PROVIDER_CONFIG } from '../types';
+import { normalizeRuntimePackage } from '../runtime-assets';
 
 // ── Agent CRUD (API-backed) ───────────────────────────────────────────────────
 
@@ -13,6 +14,7 @@ export async function saveAgent(agent: AgentConfig): Promise<void> {
   const sanitized = {
     ...agent,
     settings: agent.settings ? { ...agent.settings, apiKey: '' } : undefined,
+    runtimePackage: normalizeRuntimePackage(agent.runtimePackage),
   };
 
   const res = await fetch(`/api/agents/${agent.id}`, {
@@ -109,7 +111,10 @@ export function importAgent(file: File): Promise<AgentConfig> {
 
 export function normalizeAgentConfig(data: any): AgentConfig {
   if (data.nodes && data.connections && data.id && data.name) {
-    return data as AgentConfig;
+    return {
+      ...data,
+      runtimePackage: normalizeRuntimePackage(data.runtimePackage),
+    } as AgentConfig;
   }
 
   if (data.metadata && data.graph) {
@@ -142,10 +147,14 @@ export function normalizeAgentConfig(data: any): AgentConfig {
         model: metadata.model || 'gemini-3-flash-preview',
         temperature: 0,
       },
+      runtimePackage: normalizeRuntimePackage(data.runtimePackage),
     };
   }
 
-  return data as AgentConfig;
+  return {
+    ...data,
+    runtimePackage: normalizeRuntimePackage(data.runtimePackage),
+  } as AgentConfig;
 }
 
 export function incrementForkCount(_agentId: string): void {

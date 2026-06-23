@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Layout, Database, Plus, Search, LayoutDashboard, BookOpen, Network as NetworkIcon, Settings as SettingsIcon, FileText, Globe, Lock, MoreHorizontal, Trash2 as Trash2Icon, ExternalLink, Home as HomeIcon, Users, TrendingUp, Clock, UserCircle, Building2, Key, LogOut, ChevronRight, Mail, Shield, UserCog, Library, GitFork, ChevronDown, Sparkles, Sun, Moon, Server, X as XIcon } from 'lucide-react';
+import { Loader2, Layout, Database, Plus, Search, LayoutDashboard, BookOpen, Network as NetworkIcon, Settings as SettingsIcon, FileText, Globe, Lock, MoreHorizontal, Trash2 as Trash2Icon, ExternalLink, Home as HomeIcon, Users, TrendingUp, Clock, UserCircle, Building2, Key, LogOut, ChevronRight, Mail, Shield, UserCog, Library, GitFork, ChevronDown, Sparkles, Sun, Moon, Server, X as XIcon, Boxes, Terminal } from 'lucide-react';
 import { subgraphToPromptFragment, suggestComplexity, suggestPatternName } from '@/lib/subgraph-to-prompt';
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
@@ -50,7 +50,7 @@ import {
   getGraphRuleSettings,
   saveGraphRuleSettings,
 } from '@/lib/storage/storage';
-import { DEMO_AGENT, DEMO_AGENTS } from '@/lib/templates';
+import { DEMO_AGENT, DEMO_AGENTS, OPEN_SHELL_TOOL_DEMO_AGENT } from '@/lib/templates';
 import { validateAgentConfig } from '@/lib/validation';
 import { agentToText, textToAgent } from '@/lib/text-to-graph';
 import { applyAutoLayout } from '@/lib/graph/auto-layout';
@@ -93,8 +93,12 @@ import { AgentTabBar } from '@/components/graph/agent-tab-bar';
 import { PromptFilterBar } from '@/components/prompt-filter-bar';
 import { PromptCard } from '@/components/prompt-card';
 import { DEFAULT_FILTERS, PromptFilters, applyFilters, extractGroups, extractTags } from '@/lib/prompt-filters';
+import { DeployAgentDialog } from '@/components/deployments/deploy-agent-dialog';
+import { DeploymentsView } from '@/components/deployments/deployments-view';
+import { OpenShellConsole } from '@/components/openshell/openshell-console';
+import type { RuntimePackage } from '@/lib/deployments/types';
 
-type EditorPanel = 'home' | 'editor' | 'prompts' | 'hub' | 'patterns' | 'wiki' | 'groups' | 'settings' | 'profile' | 'mcp'
+type EditorPanel = 'home' | 'editor' | 'prompts' | 'hub' | 'deployments' | 'openshell' | 'patterns' | 'wiki' | 'groups' | 'settings' | 'profile' | 'mcp'
 
 export default function Home() {
   const { user: currentUserData } = useCurrentUser();
@@ -127,6 +131,7 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [graphRuleSettings, setGraphRuleSettings] = useState<GraphRuleSettings>(DEFAULT_GRAPH_RULE_SETTINGS);
   const [mcpPanelOpen, setMcpPanelOpen] = useState(false);
+  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [simulationStudioOpen, setSimulationStudioOpen] = useState(false);
@@ -412,6 +417,12 @@ export default function Home() {
       setHasUnsavedChanges(false);
       return;
     }
+    if (agentId === OPEN_SHELL_TOOL_DEMO_AGENT.id) {
+      setCurrentAgent(OPEN_SHELL_TOOL_DEMO_AGENT);
+      setSelectedNodeId(null);
+      setHasUnsavedChanges(false);
+      return;
+    }
     const demoFamilyAgent = DEMO_AGENTS.find(a => a.id === agentId);
     if (demoFamilyAgent) {
       setCurrentAgent(demoFamilyAgent);
@@ -654,6 +665,17 @@ export default function Home() {
     setAgents(agents.map(a => (a.id === agent.id ? agent : a)));
     setHasUnsavedChanges(true);
   }, [agents]);
+
+  const handleUpdateRuntimePackage = useCallback((agentId: string, runtimePackage: RuntimePackage) => {
+    const target = agents.find(a => a.id === agentId) ?? (currentAgent?.id === agentId ? currentAgent : null);
+    if (!target) return;
+    const updatedAgent = { ...target, runtimePackage, updatedAt: new Date().toISOString() };
+    setAgents(prev => prev.map(a => (a.id === agentId ? updatedAgent : a)));
+    if (currentAgent?.id === agentId) setCurrentAgent(updatedAgent);
+    saveAgent(updatedAgent);
+    setHasUnsavedChanges(false);
+    toast.success('Runtime assets saved');
+  }, [agents, currentAgent]);
 
   const handleVersionCreated = useCallback((agent: AgentConfig) => {
     setCurrentAgent(agent);
@@ -1310,6 +1332,21 @@ export default function Home() {
         />
       )}
 
+      {/* Full-page: OpenShell Sandboxes */}
+      {editorPanel === 'deployments' && (
+        <DeploymentsView
+          initialAgentId={currentAgent?.id ?? null}
+          initialAgentName={currentAgent?.name ?? null}
+          onOpenAgent={(agentId) => {
+            getAgent(agentId).then(a => { if (a) { setCurrentAgent(a); setEditorPanel('editor') } })
+          }}
+        />
+      )}
+
+      {editorPanel === 'openshell' && (
+        <OpenShellConsole />
+      )}
+
       {/* Full-page: MCP Server */}
       {editorPanel === 'mcp' && (
         <McpSidebarPanel />
@@ -1368,7 +1405,7 @@ export default function Home() {
               Model Attention Path
             </p>
             <p className="text-xl text-muted-foreground mb-3 leading-relaxed">
-              A self-hosted visual editor for designing, versioning, and sharing AI agent workflows.
+              A self-hosted visual editor and runtime platform for designing, versioning, sharing, and operating AI agent workflows.
             </p>
             <p className="text-base text-muted-foreground/80 mb-10 leading-relaxed max-w-lg mx-auto">
               Describe what your agent should do in plain text — MAP turns it into a structured graph of nodes and edges.
@@ -1440,6 +1477,7 @@ export default function Home() {
             onOpenJsonParser={() => setJsonParserOpen(true)}
             onOpenConflictAnalyzer={() => setConflictAnalyzerOpen(true)}
             onOpenExportJson={() => setExportJsonOpen(true)}
+            onDeploy={() => setDeployDialogOpen(true)}
             canUndo={historyRef.current ? canUndo(historyRef.current) : false}
             canRedo={historyRef.current ? canRedo(historyRef.current) : false}
             analyzerRiskCount={analyzerRiskCount}
@@ -1495,6 +1533,7 @@ export default function Home() {
                 onSelectAgent={handleSelectAgent}
                 onCreateAgent={handleCreateAgent}
                 onDeleteAgent={handleDeleteAgent}
+                onUpdateRuntimePackage={handleUpdateRuntimePackage}
                 onExportAgent={handleExportAgent}
                 onImportAgent={handleImportAgent}
                 isTextMode={isTextMode}
@@ -1504,7 +1543,7 @@ export default function Home() {
                 onNodeHover={handleHighlightNode}
                 selectedNodeId={selectedNodeId || undefined}
                 demoAgent={DEMO_AGENT}
-                demoAgents={DEMO_AGENTS}
+                demoAgents={[OPEN_SHELL_TOOL_DEMO_AGENT]}
                 generationJob={generationJob}
                 onDismissGenerationJob={() => setGenerationJob(null)}
                 multiAgentJob={multiAgentJob}
@@ -1742,6 +1781,14 @@ export default function Home() {
         agent={currentAgent}
       />
 
+      <DeployAgentDialog
+        open={deployDialogOpen}
+        onOpenChange={setDeployDialogOpen}
+        agentId={currentAgent?.id ?? null}
+        agentName={currentAgent?.name ?? null}
+        onCreated={() => setEditorPanel('deployments')}
+      />
+
       <PatternBrowserDialog
         open={patternBrowserOpen}
         onOpenChange={setPatternBrowserOpen}
@@ -1962,6 +2009,8 @@ function EditorSidebarRail({
     { panel: 'editor' as EditorPanel, icon: NetworkIcon, label: 'Editor' },
     { panel: 'prompts' as EditorPanel, icon: FileText, label: 'Prompts' },
     { panel: 'hub' as EditorPanel, icon: Globe, label: 'Agent Hub' },
+    { panel: 'deployments' as EditorPanel, icon: Boxes, label: 'Sandboxes' },
+    { panel: 'openshell' as EditorPanel, icon: Terminal, label: 'OpenShell CLI' },
     { panel: 'mcp' as EditorPanel, icon: Server, label: 'MCP Server' },
     { panel: 'patterns' as EditorPanel, icon: Library, label: 'Pattern Library' },
     { panel: 'groups' as EditorPanel, icon: Building2, label: 'Groups' },
@@ -2054,6 +2103,8 @@ type PromptListItem = {
   lastChangeSummary?: string
   linkedAgents?: { id: string; name: string }[]
   pullCount?: number
+  deploymentCount?: number
+  latestDeploymentStatus?: string | null
 }
 
 interface PromptEditModalProps {
@@ -2476,7 +2527,7 @@ function EditorWikiPage() {
         <section id="fp-getting-started">
           <h2 className="text-xl font-semibold mb-4 pb-2 border-b border-border/50">Getting Started</h2>
           <p className="text-muted-foreground leading-relaxed mb-6">
-            MAP is a visual AI agent architect. You describe what an agent should do — MAP turns it into an interactive graph, a structured representation of how the agent thinks and acts.
+            MAP is a visual AI agent architect and runtime control plane. You describe what an agent should do — MAP turns it into an interactive graph, then can pin and operate that prompt as an OpenShell sandbox runtime.
           </p>
           <div className="grid gap-4 sm:grid-cols-3 mb-8">
             {[
@@ -3810,6 +3861,7 @@ function EditorGroupsPage({ onOpenAgent }: { onOpenAgent?: (id: string) => void 
   const [addingMember, setAddingMember] = useState(false)
   const [newKeyValue, setNewKeyValue] = useState('')
   const [savingKey, setSavingKey] = useState(false)
+  const [deletingKeyProvider, setDeletingKeyProvider] = useState<string | null>(null)
   const [keyProvider, setKeyProvider] = useState('gemini')
   const [deletingGroup, setDeletingGroup] = useState(false)
 
@@ -3940,6 +3992,27 @@ function EditorGroupsPage({ onOpenAgent }: { onOpenAgent?: (id: string) => void 
       }))
     })
     setSavingKey(false)
+  }
+
+  async function handleDeleteKey(provider: string) {
+    if (!selectedGroupId) return
+    if (!confirm(`Remove the ${provider} API key forever? This deletes the stored group key and cannot be undone.`)) return
+    setDeletingKeyProvider(provider)
+    const res = await fetch(`/api/groups/${selectedGroupId}/api-keys/${provider}`, { method: 'DELETE' })
+    if (res.ok) {
+      toast.success(`${provider} API key removed`)
+      const keysRes = await fetch(`/api/groups/${selectedGroupId}/api-keys`)
+      const data = await keysRes.json()
+      const rec = data.keys ?? {}
+      setApiKeys(Object.entries(rec).map(([keyProviderName, info]: [string, unknown]) => {
+        const ki = info as { set: boolean; preview: string | null }
+        return { provider: keyProviderName, isSet: ki.set, maskedKey: ki.preview }
+      }))
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? `Failed to remove ${provider} API key`)
+    }
+    setDeletingKeyProvider(null)
   }
 
   const selectedGroup = groups.find(g => g.id === selectedGroupId)
@@ -4277,13 +4350,24 @@ function EditorGroupsPage({ onOpenAgent }: { onOpenAgent?: (id: string) => void 
                     ) : apiKeys.map(k => (
                       <div key={k.provider} className="flex items-center gap-3 px-4 py-3 border-b border-border/30 last:border-0">
                         <Key className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium capitalize">{k.provider}</p>
-                          <p className="text-xs text-muted-foreground font-mono">{k.maskedKey ?? '—'}</p>
+                          <p className="truncate text-xs text-muted-foreground font-mono">{k.maskedKey ?? '—'}</p>
                         </div>
                         <Badge variant={k.isSet ? 'default' : 'secondary'} className="text-xs">
                           {k.isSet ? 'Set' : 'Not set'}
                         </Badge>
+                        {k.isSet && (
+                          <button
+                            onClick={() => handleDeleteKey(k.provider)}
+                            disabled={deletingKeyProvider === k.provider}
+                            className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-destructive/40 px-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                            title="Remove API key forever"
+                          >
+                            <Trash2Icon className="h-3.5 w-3.5" />
+                            {deletingKeyProvider === k.provider ? 'Removing...' : 'Remove'}
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

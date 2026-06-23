@@ -4,7 +4,7 @@ import { hashSync } from 'bcryptjs'
 import { db } from '@/db'
 import { users } from '@/db/schema'
 import { getSessionUser } from '@/lib/auth/session'
-import { desc, ilike, or } from 'drizzle-orm'
+import { desc, ilike, or, sql } from 'drizzle-orm'
 
 // GET /api/users — list users.
 // ?search=query  → any logged-in user can search (for invite flows), returns id/name/email only
@@ -49,12 +49,18 @@ export async function GET(request: NextRequest) {
 
 // POST /api/users — create a user (admin only)
 export async function POST(request: NextRequest) {
-  const user = await getSessionUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (user.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
   const body = await request.json()
-  const { email, password, name, role = 'editor' } = body
+  const user = await getSessionUser()
+  const { email, password, name } = body
+  let role = body.role ?? 'editor'
+
+  if (!user) {
+    const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(users)
+    if ((row?.count ?? 0) > 0) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    role = 'admin'
+  } else if (user.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   if (!email || !password || !name) {
     return NextResponse.json({ error: 'email, password, and name are required' }, { status: 400 })

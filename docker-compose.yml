@@ -33,7 +33,7 @@ services:
     environment:
       POSTGRES_DB: map
       POSTGRES_USER: map
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-maplocal}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set (openssl rand -hex 24)}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -69,16 +69,25 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-0.1.0}
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgres://map:${DB_PASSWORD:-maplocal}@postgres:5432/map
+      DATABASE_URL: postgres://map:${DB_PASSWORD:?DB_PASSWORD must be set (openssl rand -hex 24)}@postgres:5432/map
       REDIS_URL: redis://redis:6379
       # Both must be set explicitly — no in-tree default to prevent accidental
       # prod deploys with a known-public secret. Generate with: openssl rand -hex 32
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set (openssl rand -hex 32)}
       KEY_ENCRYPTION_SECRET: ${KEY_ENCRYPTION_SECRET:?KEY_ENCRYPTION_SECRET must be set (openssl rand -hex 32)}
+      APP_VERSION: ${APP_VERSION:-0.1.0}
       NEXT_PUBLIC_APP_URL: ${APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.1.0}
+      DEPLOYMENT_WORKER_URL: http://deployment-worker:3200
+      MCP_INTERNAL_URL: http://mcp-server:3100/mcp
+      OPENSHELL_RUNTIME_ENABLED: ${OPENSHELL_RUNTIME_ENABLED:-true}
+      OPENSHELL_RUNTIME_V2_ENABLED: ${OPENSHELL_RUNTIME_V2_ENABLED:-true}
+      OPENSHELL_ALLOW_LEGACY_SECRET_ENV: ${OPENSHELL_ALLOW_LEGACY_SECRET_ENV:-false}
       NODE_ENV: ${NODE_ENV:-development}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
@@ -90,6 +99,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      deployment-worker:
+        condition: service_healthy
     restart: unless-stopped
 
   # ── 4. MCP server ────────────────────────────────────────────────────────────
@@ -97,21 +108,102 @@ services:
     build:
       context: ./mcp-server
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-0.1.0}
     environment:
-      DATABASE_URL: postgres://map:${DB_PASSWORD:-maplocal}@postgres:5432/map
+      DATABASE_URL: postgres://map:${DB_PASSWORD:?DB_PASSWORD must be set (openssl rand -hex 24)}@postgres:5432/map
       MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:?MCP_AUTH_TOKEN must be set (openssl rand -hex 32)}
       MCP_PORT: 3100
+      APP_VERSION: ${APP_VERSION:-0.1.0}
       MCP_CORS_ORIGIN: ${APP_URL:-http://localhost:3000}
       MCP_ENABLED: ${MCP_ENABLED:-true}
+      DEPLOYMENT_WORKER_URL: http://deployment-worker:3200
+      OPENSHELL_RUNTIME_ENABLED: ${OPENSHELL_RUNTIME_ENABLED:-true}
+      OPENSHELL_RUNTIME_V2_ENABLED: ${OPENSHELL_RUNTIME_V2_ENABLED:-true}
       NODE_ENV: ${NODE_ENV:-development}
     ports:
       - "127.0.0.1:3100:3100"
     depends_on:
       postgres:
         condition: service_healthy
+      deployment-worker:
+        condition: service_healthy
     restart: unless-stopped
 
-  # ── 5. Nginx (prod only — profile: nginx) ────────────────────────────────────
+  # ── 5. OpenShell gateway ─────────────────────────────────────────────────────
+  openshell-bootstrap:
+    image: ghcr.io/nvidia/openshell/gateway:latest
+    user: "0:0"
+    entrypoint: ["/usr/local/bin/openshell-gateway"]
+    command: ["generate-certs", "--output-dir", "/var/openshell/tls"]
+    volumes:
+      - openshell_state:/var/openshell
+    restart: "no"
+
+  openshell-gateway:
+    image: ghcr.io/nvidia/openshell/gateway:latest
+    user: "0:0"
+    environment:
+      OPENSHELL_GATEWAY_CONFIG: /etc/openshell/gateway.toml
+      OPENSHELL_DRIVERS: docker
+      OPENSHELL_DB_URL: sqlite:/var/openshell/openshell.db
+      OPENSHELL_DISABLE_TLS: "true"
+      XDG_DATA_HOME: ${PWD}/.openshell-cache/data
+      XDG_STATE_HOME: ${PWD}/.openshell-cache/state
+    volumes:
+      - openshell_state:/var/openshell
+      - ${PWD}/.openshell-cache:${PWD}/.openshell-cache
+      - ./openshell-gateway/gateway.toml:/etc/openshell/gateway.toml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      openshell-bootstrap:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ── 6. Deployment worker ─────────────────────────────────────────────────────
+  deployment-worker:
+    build:
+      context: .
+      dockerfile: deployment-worker/Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-0.1.0}
+    environment:
+      DATABASE_URL: postgres://map:${DB_PASSWORD:?DB_PASSWORD must be set (openssl rand -hex 24)}@postgres:5432/map
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      OPENSHELL_GATEWAY_URL: ${OPENSHELL_GATEWAY_URL:-http://openshell-gateway:8080}
+      DEPLOYMENT_WORKER_PORT: 3200
+      DEPLOYMENT_WORKSPACE: ${DEPLOYMENT_WORKSPACE:-/var/lib/map-deployments}
+      MCP_INTERNAL_URL: ${MCP_INTERNAL_URL:-http://mcp-server:3100/mcp}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:?MCP_AUTH_TOKEN must be set (openssl rand -hex 32)}
+      OPENSHELL_RUNTIME_ENABLED: ${OPENSHELL_RUNTIME_ENABLED:-true}
+      OPENSHELL_RUNTIME_V2_ENABLED: ${OPENSHELL_RUNTIME_V2_ENABLED:-true}
+      OPENSHELL_ALLOW_LEGACY_SECRET_ENV: ${OPENSHELL_ALLOW_LEGACY_SECRET_ENV:-false}
+      OPENSHELL_ALLOW_RAW_CLI: ${OPENSHELL_ALLOW_RAW_CLI:-true}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      GOOGLE_SERVICE_ACCOUNT_KEY: ${GOOGLE_SERVICE_ACCOUNT_KEY:-}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AZURE_AI_API_KEY: ${AZURE_AI_API_KEY:-}
+      NODE_ENV: ${NODE_ENV:-development}
+    volumes:
+      - deployment_workspace:/var/lib/map-deployments
+    ports:
+      - "127.0.0.1:3200:3200"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      openshell-gateway:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── 7. Nginx (prod only — profile: nginx) ────────────────────────────────────
   nginx:
     image: nginx:1.27-alpine
     profiles: ["nginx"]
@@ -136,3 +228,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  openshell_state:
+  deployment_workspace:

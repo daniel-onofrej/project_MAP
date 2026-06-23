@@ -1,12 +1,13 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
-import { agents, agentShares, groupMembers, promptAgentLinks } from '@/db/schema'
+import { agentDeployments, agents, agentShares, groupMembers, promptAgentLinks } from '@/db/schema'
 import { getSessionUser } from '@/lib/auth/session'
 import { eq, or, and, inArray, desc } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { publishAgentEvent } from '@/lib/realtime/publisher'
 import { writeAuditLog } from '@/lib/audit'
+import { normalizeRuntimePackage } from '@/lib/runtime-assets'
 
 // GET /api/agents — list agents accessible to current user
 // Query params: ?group=<groupId> | ?mine=true | ?shared=true | ?search=<text>
@@ -86,6 +87,28 @@ export async function GET(request: NextRequest) {
     linkedMap[link.promptAgentId].push({ id: link.consumerId, name: link.consumerName })
   }
 
+  const deploymentRows = agentIds.length > 0
+    ? await db
+        .select({
+          agentId: agentDeployments.agentId,
+          status: agentDeployments.status,
+          updatedAt: agentDeployments.updatedAt,
+        })
+        .from(agentDeployments)
+        .where(inArray(agentDeployments.agentId, agentIds))
+    : []
+
+  const deploymentMap: Record<string, { count: number; latestStatus: string | null; latestAt: Date | null }> = {}
+  for (const deployment of deploymentRows) {
+    const current = deploymentMap[deployment.agentId] ?? { count: 0, latestStatus: null, latestAt: null }
+    current.count += 1
+    if (!current.latestAt || new Date(deployment.updatedAt) > current.latestAt) {
+      current.latestAt = new Date(deployment.updatedAt)
+      current.latestStatus = deployment.status
+    }
+    deploymentMap[deployment.agentId] = current
+  }
+
   const enriched = list.map((a) => ({
     ...a,
     tags: (a.hubMeta as any)?.tags ?? [],
@@ -97,6 +120,8 @@ export async function GET(request: NextRequest) {
       : null,
     linkedAgents: linkedMap[a.id] ?? [],
     pullCount: a.pullCount ?? 0,
+    deploymentCount: deploymentMap[a.id]?.count ?? 0,
+    latestDeploymentStatus: deploymentMap[a.id]?.latestStatus ?? null,
   }))
 
   return NextResponse.json({ agents: enriched })
@@ -124,6 +149,7 @@ export async function POST(request: NextRequest) {
         connections: body.connections ?? [],
         annotations: body.annotations ?? [],
         settings: body.settings ? { ...body.settings, apiKey: undefined } : {},
+        runtimePackage: normalizeRuntimePackage(body.runtimePackage),
         version: body.version,
         sourceFormat: body.sourceFormat,
         generatedWith: body.generatedWith,

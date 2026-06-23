@@ -7,9 +7,11 @@ import { homedir } from 'os'
 import { db } from '@/db'
 import { mcpTokens, groupMembers } from '@/db/schema'
 import { getSessionUser } from '@/lib/auth/session'
-import { eq, desc } from 'drizzle-orm'
+import { and, eq, desc } from 'drizzle-orm'
 
 function syncTokenToLocalDev(rawToken: string) {
+  if (process.env.AUTO_SYNC_MCP_TOKEN_TO_LOCAL_DEV !== 'true') return
+
   try {
     // 1. Write MCP_AUTH_TOKEN to mcp-server/.env
     const envPath = resolve(process.cwd(), 'mcp-server/.env')
@@ -49,12 +51,13 @@ export async function GET() {
     rows = await db
       .select()
       .from(mcpTokens)
+      .where(eq(mcpTokens.isActive, true))
       .orderBy(desc(mcpTokens.createdAt))
   } else {
     rows = await db
       .select()
       .from(mcpTokens)
-      .where(eq(mcpTokens.createdBy, user.id))
+      .where(and(eq(mcpTokens.createdBy, user.id), eq(mcpTokens.isActive, true)))
       .orderBy(desc(mcpTokens.createdAt))
   }
 

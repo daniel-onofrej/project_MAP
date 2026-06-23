@@ -39,6 +39,7 @@ import {
   Shield,
   LogOut,
   ChevronDown,
+  Rocket,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCurrentUser } from '@/lib/auth/user-context';
@@ -65,6 +66,7 @@ interface ToolbarProps {
   onOpenJsonParser: () => void;
   onOpenConflictAnalyzer: () => void;
   onOpenExportJson: () => void;
+  onDeploy: () => void;
   canUndo: boolean;
   canRedo: boolean;
   /** Count of unguarded high-risk actions from background analysis */
@@ -103,6 +105,7 @@ export function Toolbar({
   onOpenJsonParser,
   onOpenConflictAnalyzer,
   onOpenExportJson,
+  onDeploy,
   canUndo: canUndoFlag,
   canRedo: canRedoFlag,
   analyzerRiskCount = 0,
@@ -230,6 +233,11 @@ export function Toolbar({
           <Button size="sm" variant="secondary" className="h-7 text-xs px-2" onClick={onOpenExportJson} title="Export JSON">
             <FileOutput className="h-3.5 w-3.5 mr-1" />
             Export JSON
+          </Button>
+
+          <Button size="sm" variant="secondary" className="h-7 text-xs px-2" onClick={onDeploy} title="Deploy to OpenShell">
+            <Rocket className="h-3.5 w-3.5 mr-1" />
+            Deploy
           </Button>
 
           <Button

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import {
   Network, ChevronDown, ChevronLeft, ChevronRight,
   LayoutDashboard, Users, Settings, BookOpen,
-  Shield, LogOut, Check,
+  Shield, LogOut, Check, Boxes, Terminal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -16,7 +16,7 @@ import {
 
 const COLLAPSED_KEY = 'verto_sidebar_collapsed'
 
-export type SidebarPanel = 'graphs' | 'wiki' | 'members' | 'admin'
+export type SidebarPanel = 'graphs' | 'deployments' | 'openshell' | 'wiki' | 'members' | 'admin'
 
 interface NavItemProps {
   icon: React.ElementType
@@ -84,6 +84,8 @@ export function WorkspaceSidebar({ activePanel, onPanelChange }: WorkspaceSideba
 
   const mainNav: { panel: SidebarPanel; icon: React.ElementType; label: string; show: boolean }[] = [
     { panel: 'graphs', icon: LayoutDashboard, label: 'Graphs', show: true },
+    { panel: 'deployments', icon: Boxes, label: 'Sandboxes', show: true },
+    { panel: 'openshell', icon: Terminal, label: 'OpenShell CLI', show: true },
     { panel: 'members', icon: Users, label: 'Members', show: isGroupWorkspace && isAdmin },
     { panel: 'admin', icon: Settings, label: 'Settings', show: isGroupWorkspace && isAdmin },
   ]

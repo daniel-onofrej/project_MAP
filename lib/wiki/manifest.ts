@@ -66,6 +66,7 @@ const GUIDES: WikiPageMeta[] = [
   { slug: 'guides/audit-risky-actions', title: 'Audit Risky Actions', summary: 'Use risk categories and the Actions & Permissions panel to find unsafe steps.', group: 'guides', order: 6, updated: '2026-04-19' },
   { slug: 'guides/export-and-share', title: 'Export and Share', summary: 'Export a graph as JSON, share with a group, or publish a read-only link.', group: 'guides', order: 7, updated: '2026-04-19' },
   { slug: 'guides/debug-failed-generation', title: 'Debug a Failed Generation', summary: 'Common errors and exactly how to fix each.', group: 'guides', order: 8, updated: '2026-04-19' },
+  { slug: 'guides/deploy-openshell-runtime', title: 'Deploy an OpenShell Agent Runtime', summary: 'Pin a prompt, attach graph-owned tools/scripts, configure providers, apply policy, and operate the runtime from MAP.', group: 'guides', order: 9, updated: '2026-06-22' },
 ]
 
 const REFERENCE: WikiPageMeta[] = [
@@ -76,7 +77,8 @@ const REFERENCE: WikiPageMeta[] = [
   { slug: 'reference/ai-providers', title: 'AI Providers', summary: 'Per-provider setup, models, and environment variables.', group: 'reference', order: 5, updated: '2026-04-19' },
   { slug: 'reference/permissions-and-roles', title: 'Permissions and Roles', summary: 'Risk categories, Guarded vs Unguarded, and the role matrix.', group: 'reference', order: 6, updated: '2026-04-19' },
   { slug: 'reference/mcp-api', title: 'MCP API', summary: 'Every MCP tool the MAP server exposes, with scopes and examples.', group: 'reference', order: 7, updated: '2026-04-19' },
-  { slug: 'reference/glossary', title: 'Glossary', summary: 'Alphabetical definitions of every MAP term.', group: 'reference', order: 8, updated: '2026-04-19' },
+  { slug: 'reference/openshell-runtime-package', title: 'OpenShell Runtime Package', summary: 'Graph-owned attachments, tools, scripts, files, env, providers, ports, connections, and secret handling for a sandbox.', group: 'reference', order: 8, updated: '2026-06-22' },
+  { slug: 'reference/glossary', title: 'Glossary', summary: 'Alphabetical definitions of every MAP term.', group: 'reference', order: 9, updated: '2026-04-19' },
 ]
 
 const CONCEPTS: WikiPageMeta[] = [
@@ -121,7 +123,8 @@ export const POPULAR_PAGES = [
 
 export const RECENTLY_UPDATED = [
   'reference/mcp-api',
+  'guides/deploy-openshell-runtime',
   'concepts/risk-categories',
+  'reference/openshell-runtime-package',
   'reference/templates',
-  'learn/welcome',
 ]

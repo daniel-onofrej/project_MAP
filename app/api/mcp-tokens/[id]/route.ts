@@ -36,7 +36,7 @@ export async function PATCH(
   return NextResponse.json({ token: safe })
 }
 
-// DELETE /api/mcp-tokens/[id] — revoke (soft delete)
+// DELETE /api/mcp-tokens/[id] — permanently remove token
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -50,13 +50,12 @@ export async function DELETE(
     ? eq(mcpTokens.id, id)
     : and(eq(mcpTokens.id, id), eq(mcpTokens.createdBy, user.id))
 
-  const [revoked] = await db
-    .update(mcpTokens)
-    .set({ isActive: false })
+  const [deleted] = await db
+    .delete(mcpTokens)
     .where(whereClause!)
     .returning()
 
-  if (!revoked) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   return NextResponse.json({ ok: true })
 }

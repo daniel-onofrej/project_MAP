@@ -388,6 +388,8 @@ export function McpControlPanel({
   }, [open, fetchStatus, fetchSessions, fetchHistory, fetchStats, fetchTokens, fetchGroups]);
 
   async function revokeToken(id: string) {
+    const token = tokens.find(t => t.id === id);
+    if (!confirm(`Remove API token "${token?.name ?? 'this token'}" forever? Clients using it will stop authenticating immediately.`)) return;
     const res = await fetch(`/api/mcp-tokens/${id}`, { method: 'DELETE' });
     if (res.ok) setTokens(prev => prev.filter(t => t.id !== id));
   }
@@ -610,10 +612,11 @@ export function McpControlPanel({
                         </div>
                         <button
                           onClick={() => revokeToken(t.id)}
-                          className="shrink-0 p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                          title="Revoke token"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-md border border-destructive/40 px-2 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                          title="Remove token forever"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
+                          Remove
                         </button>
                       </div>
                     ))}

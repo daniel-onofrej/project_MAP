@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
-import { agents, promptAgentLinks } from '@/db/schema'
+import { agentDeployments, agents, promptAgentLinks } from '@/db/schema'
 import { getSessionUser } from '@/lib/auth/session'
-import { sql, eq } from 'drizzle-orm'
+import { isOpenShellRuntimeEnabled } from '@/lib/deployments/config'
+import { eq, inArray, sql } from 'drizzle-orm'
 
 export async function GET() {
   const user = await getSessionUser()
@@ -36,10 +37,30 @@ export async function GET() {
       sql`${agents.ownerId} = ${user.id} AND (${agents.originalPrompt} IS NOT NULL OR ${agents.editedPrompt} IS NOT NULL)`
     )
 
+  const promptIds = (
+    await db
+      .select({ id: agents.id })
+      .from(agents)
+      .where(
+        sql`${agents.ownerId} = ${user.id} AND (${agents.originalPrompt} IS NOT NULL OR ${agents.editedPrompt} IS NOT NULL)`
+      )
+  ).map((row) => row.id)
+
+  const deploymentRows = promptIds.length > 0
+    ? await db
+        .select({ status: agentDeployments.status })
+        .from(agentDeployments)
+        .where(inArray(agentDeployments.agentId, promptIds))
+    : []
+
   return NextResponse.json({
     totalPrompts: promptsRow?.count ?? 0,
     totalAgents: agentsRow?.count ?? 0,
     agentsLinked: linkedRow?.count ?? 0,
     totalPulls: pullsRow?.total ?? 0,
+    totalDeployments: deploymentRows.length,
+    activeDeployments: deploymentRows.filter((row) => row.status === 'ready' || row.status === 'provisioning').length,
+    errorDeployments: deploymentRows.filter((row) => row.status === 'error').length,
+    runtimeEnabled: isOpenShellRuntimeEnabled(),
   })
 }

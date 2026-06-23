@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { sql } from 'drizzle-orm'
+import { APP_VERSION } from '@/lib/version'
 
 // Disable Next.js static caching — this must always be evaluated live
 export const dynamic = 'force-dynamic'
@@ -22,7 +23,7 @@ export async function GET() {
     await db.execute(sql`SELECT 1`)
 
     return NextResponse.json(
-      { status: 'ok', timestamp: new Date().toISOString() },
+      { status: 'ok', version: APP_VERSION, timestamp: new Date().toISOString() },
       { status: 200 }
     )
   } catch {

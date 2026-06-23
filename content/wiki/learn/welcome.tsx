@@ -26,11 +26,11 @@ export default function Welcome() {
   return (
     <>
       <Lead>
-        MAP is a visual editor for <Strong>prompt graphs</Strong> — a lossless, editable
-        representation of the same logic you would otherwise bury inside a large system
-        prompt. You describe what an agent should do, MAP converts it into a graph you can
-        inspect, refactor, and share, and at any point you can convert it back into a clean
-        system prompt with a measured similarity score.
+        MAP is a visual editor for <Strong>prompt graphs</Strong> and a runtime control
+        plane for OpenShell agent sandboxes. You describe what an agent should do, MAP
+        converts it into a graph you can inspect, refactor, share, and pin, then you can
+        deploy that exact prompt snapshot into a managed runtime with policy, tools,
+        scripts, environment, logs, and chat controls.
       </Lead>
 
       <P>
@@ -43,13 +43,14 @@ export default function Welcome() {
         items={[
           'What kinds of problems MAP is designed for',
           'Why a graph beats a text blob for prompt engineering',
+          'How saved prompts become OpenShell agent runtimes',
           'The five-minute mental model that underpins every feature',
         ]}
       />
 
       <H2 id="what-you-can-do">What you can do with MAP</H2>
       <P>
-        MAP is built around five core capabilities. Every other feature in the product is
+        MAP is built around six core capabilities. Every other feature in the product is
         a specialization of one of these:
       </P>
       <UL>
@@ -75,6 +76,11 @@ export default function Welcome() {
         <LI>
           <Strong>Share</Strong> — version graphs like code, share them with a team, and
           expose them to external agents over the Model Context Protocol (MCP).
+        </LI>
+        <LI>
+          <Strong>Deploy</Strong> — turn a saved prompt into a persistent OpenShell agent
+          runtime with a pinned prompt snapshot, custom policy YAML, packaged tools,
+          scripts, files, environment variables, logs, and chat/CLI controls.
         </LI>
       </UL>
 
@@ -149,11 +155,16 @@ export default function Welcome() {
           <A href="/wiki/reference/node-types">Node Types reference</A> — the full 22-node
           catalog with examples.
         </LI>
+        <LI>
+          <A href="/wiki/guides/deploy-openshell-runtime">Deploy an OpenShell Agent Runtime</A> — package
+          a prompt, policy, tools, scripts, and environment into a sandbox.
+        </LI>
       </OL>
 
       <RelatedLinks
         slugs={[
           'learn/build-your-first-graph',
+          'guides/deploy-openshell-runtime',
           'concepts/prompt-graph-sync',
           'reference/node-types',
         ]}

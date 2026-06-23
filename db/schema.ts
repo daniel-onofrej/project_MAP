@@ -72,6 +72,7 @@ export const agents = pgTable(
     connections: jsonb('connections').notNull().default([]),
     annotations: jsonb('annotations').notNull().default([]),
     settings: jsonb('settings').notNull().default({}),
+    runtimePackage: jsonb('runtime_package').notNull().default({}),
     version: text('version'),
     sourceFormat: text('source_format'),
     generatedWith: text('generated_with'),
@@ -114,6 +115,7 @@ export const agentVersions = pgTable(
     versionLabel: text('version_label').notNull(),
     nodes: jsonb('nodes').notNull(),
     connections: jsonb('connections').notNull(),
+    runtimePackage: jsonb('runtime_package').notNull().default({}),
     commitMessage: text('commit_message'),
     createdBy: uuid('created_by')
       .notNull()
@@ -124,6 +126,157 @@ export const agentVersions = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('agent_versions_agent_id_idx').on(t.agentId, t.createdAt)]
+)
+
+// ============================================================
+// AGENT DEPLOYMENTS  (OpenShell persistent sandboxes)
+// ============================================================
+export const runtimeGateways = pgTable(
+  'runtime_gateways',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    endpoint: text('endpoint').notNull(),
+    mode: text('mode', {
+      enum: ['local-docker', 'remote-docker', 'kubernetes', 'custom'],
+    }).notNull().default('custom'),
+    description: text('description'),
+    authMode: text('auth_mode', {
+      enum: ['local', 'mtls', 'token', 'custom'],
+    }).notNull().default('local'),
+    config: jsonb('config').notNull().default({}),
+    status: text('status', {
+      enum: ['unknown', 'ready', 'error'],
+    }).notNull().default('unknown'),
+    lastVerifiedAt: timestamp('last_verified_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    isDefault: boolean('is_default').notNull().default(false),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    groupId: uuid('group_id').references(() => groups.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('runtime_gateways_created_by_idx').on(t.createdBy),
+    index('runtime_gateways_group_id_idx').on(t.groupId),
+    index('runtime_gateways_status_idx').on(t.status),
+  ]
+)
+
+export const agentDeployments = pgTable(
+  'agent_deployments',
+  {
+    id: text('id').primaryKey(),
+    agentId: text('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    agentVersionId: uuid('agent_version_id').references(() => agentVersions.id, {
+      onDelete: 'set null',
+    }),
+    name: text('name').notNull(),
+    status: text('status', {
+      enum: ['pending', 'provisioning', 'ready', 'stopped', 'error', 'deleting'],
+    }).notNull().default('pending'),
+    openshellSandboxName: text('openshell_sandbox_name').notNull(),
+    runtimeKind: text('runtime_kind', {
+      enum: ['codex', 'claude-code', 'opencode', 'gemini-cli', 'custom'],
+    }).notNull().default('custom'),
+    runtimeCommand: text('runtime_command').notNull(),
+    runtimePackage: jsonb('runtime_package').notNull().default({}),
+    manifestVersion: integer('manifest_version').notNull().default(1),
+    runtimeId: text('runtime_id').notNull().default('custom'),
+    sandboxImage: text('sandbox_image').notNull().default('base'),
+    executionMode: text('execution_mode').notNull().default('oneshot'),
+    providerMode: text('provider_mode').notNull().default('legacy-env'),
+    gatewayId: text('gateway_id').notNull().default('map'),
+    preflightReport: jsonb('preflight_report').notNull().default({}),
+    policyRevision: integer('policy_revision').notNull().default(1),
+    observedPhase: text('observed_phase'),
+    runtimeManifest: jsonb('runtime_manifest').notNull().default({}),
+    policyYaml: text('policy_yaml').notNull(),
+    pinnedSnapshot: jsonb('pinned_snapshot').notNull(),
+    pinnedPrompt: text('pinned_prompt').notNull(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    groupId: uuid('group_id').references(() => groups.id, { onDelete: 'set null' }),
+    lastError: text('last_error'),
+    lastLog: text('last_log'),
+    deployedAt: timestamp('deployed_at', { withTimezone: true }),
+    stoppedAt: timestamp('stopped_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('agent_deployments_agent_id_idx').on(t.agentId),
+    index('agent_deployments_created_by_idx').on(t.createdBy),
+    index('agent_deployments_group_id_idx').on(t.groupId),
+    index('agent_deployments_status_idx').on(t.status),
+    index('agent_deployments_runtime_id_idx').on(t.runtimeId),
+  ]
+)
+
+export const deploymentProviders = pgTable(
+  'deployment_providers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    deploymentId: text('deployment_id')
+      .notNull()
+      .references(() => agentDeployments.id, { onDelete: 'cascade' }),
+    providerName: text('provider_name').notNull(),
+    providerType: text('provider_type').notNull(),
+    role: text('role', {
+      enum: ['llm', 'tool', 'mcp', 'source-control', 'data', 'custom'],
+    }).notNull().default('llm'),
+    credentialKeys: text('credential_keys').array().notNull().default([]),
+    attachStatus: text('attach_status', {
+      enum: ['pending', 'attached', 'detached', 'error'],
+    }).notNull().default('pending'),
+    configSnapshot: jsonb('config_snapshot').notNull().default({}),
+    lastVerifiedAt: timestamp('last_verified_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('deployment_providers_deployment_id_idx').on(t.deploymentId),
+    index('deployment_providers_name_idx').on(t.providerName),
+  ]
+)
+
+export const deploymentEvents = pgTable(
+  'deployment_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    deploymentId: text('deployment_id')
+      .notNull()
+      .references(() => agentDeployments.id, { onDelete: 'cascade' }),
+    eventType: text('event_type').notNull(),
+    message: text('message'),
+    metadata: jsonb('metadata').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('deployment_events_deployment_id_idx').on(t.deploymentId, t.createdAt),
+    index('deployment_events_type_idx').on(t.eventType),
+  ]
+)
+
+export const deploymentMessages = pgTable(
+  'deployment_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    deploymentId: text('deployment_id')
+      .notNull()
+      .references(() => agentDeployments.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['user', 'assistant', 'system', 'tool', 'thinking'] }).notNull(),
+    content: text('content').notNull(),
+    status: text('status', { enum: ['pending', 'success', 'error'] }).notNull().default('success'),
+    metadata: jsonb('metadata').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('deployment_messages_deployment_id_idx').on(t.deploymentId, t.createdAt),
+  ]
 )
 
 // ============================================================
@@ -248,6 +401,7 @@ export const sessions = pgTable(
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   agents: many(agents),
+  runtimeGateways: many(runtimeGateways),
   groupMembers: many(groupMembers),
   comments: many(comments),
   auditLogs: many(auditLog),
@@ -277,18 +431,59 @@ export type GroupApiKey = typeof groupApiKeys.$inferSelect
 export const groupsRelations = relations(groups, ({ many, one }) => ({
   members: many(groupMembers),
   agents: many(agents),
+  runtimeGateways: many(runtimeGateways),
   apiKeys: many(groupApiKeys),
   creator: one(users, { fields: [groups.createdBy], references: [users.id] }),
+}))
+
+export const runtimeGatewaysRelations = relations(runtimeGateways, ({ one }) => ({
+  creator: one(users, { fields: [runtimeGateways.createdBy], references: [users.id] }),
+  group: one(groups, { fields: [runtimeGateways.groupId], references: [groups.id] }),
 }))
 
 export const agentsRelations = relations(agents, ({ one, many }) => ({
   owner: one(users, { fields: [agents.ownerId], references: [users.id] }),
   group: one(groups, { fields: [agents.groupId], references: [groups.id] }),
   versions: many(agentVersions),
+  deployments: many(agentDeployments),
   shares: many(agentShares),
   comments: many(comments),
   auditLogs: many(auditLog),
   locks: many(nodeLocks),
+}))
+
+export const agentDeploymentsRelations = relations(agentDeployments, ({ one, many }) => ({
+  agent: one(agents, { fields: [agentDeployments.agentId], references: [agents.id] }),
+  version: one(agentVersions, {
+    fields: [agentDeployments.agentVersionId],
+    references: [agentVersions.id],
+  }),
+  creator: one(users, { fields: [agentDeployments.createdBy], references: [users.id] }),
+  group: one(groups, { fields: [agentDeployments.groupId], references: [groups.id] }),
+  messages: many(deploymentMessages),
+  providers: many(deploymentProviders),
+  events: many(deploymentEvents),
+}))
+
+export const deploymentMessagesRelations = relations(deploymentMessages, ({ one }) => ({
+  deployment: one(agentDeployments, {
+    fields: [deploymentMessages.deploymentId],
+    references: [agentDeployments.id],
+  }),
+}))
+
+export const deploymentProvidersRelations = relations(deploymentProviders, ({ one }) => ({
+  deployment: one(agentDeployments, {
+    fields: [deploymentProviders.deploymentId],
+    references: [agentDeployments.id],
+  }),
+}))
+
+export const deploymentEventsRelations = relations(deploymentEvents, ({ one }) => ({
+  deployment: one(agentDeployments, {
+    fields: [deploymentEvents.deploymentId],
+    references: [agentDeployments.id],
+  }),
 }))
 
 // ============================================================
@@ -379,6 +574,16 @@ export type NewUser = typeof users.$inferInsert
 export type Agent = typeof agents.$inferSelect
 export type NewAgent = typeof agents.$inferInsert
 export type AgentVersion = typeof agentVersions.$inferSelect
+export type RuntimeGateway = typeof runtimeGateways.$inferSelect
+export type NewRuntimeGateway = typeof runtimeGateways.$inferInsert
+export type AgentDeployment = typeof agentDeployments.$inferSelect
+export type NewAgentDeployment = typeof agentDeployments.$inferInsert
+export type DeploymentMessage = typeof deploymentMessages.$inferSelect
+export type NewDeploymentMessage = typeof deploymentMessages.$inferInsert
+export type DeploymentProvider = typeof deploymentProviders.$inferSelect
+export type NewDeploymentProvider = typeof deploymentProviders.$inferInsert
+export type DeploymentEvent = typeof deploymentEvents.$inferSelect
+export type NewDeploymentEvent = typeof deploymentEvents.$inferInsert
 export type AuditLogEntry = typeof auditLog.$inferSelect
 export type Comment = typeof comments.$inferSelect
 export type NodeLock = typeof nodeLocks.$inferSelect

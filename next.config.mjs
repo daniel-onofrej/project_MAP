@@ -12,11 +12,6 @@ const nextConfig = {
         permanent: false,
       },
       {
-        source: '/graphs',
-        destination: '/editor',
-        permanent: false,
-      },
-      {
         source: '/introduction',
         destination: '/editor',
         permanent: false,

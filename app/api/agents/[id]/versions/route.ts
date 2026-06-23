@@ -42,6 +42,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
       versionLabel: body.versionLabel ?? new Date().toISOString(),
       nodes: agent.nodes,
       connections: agent.connections,
+      runtimePackage: agent.runtimePackage,
       commitMessage: body.commitMessage,
       createdBy: user.id,
       parentVersionId: agent.currentVersionId ?? null,

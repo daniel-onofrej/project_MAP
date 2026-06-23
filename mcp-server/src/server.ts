@@ -5,11 +5,13 @@ import { registerExecutionTools } from './tools/execution.js';
 import { registerAnalysisTools } from './tools/analysis.js';
 import { registerSyncTools } from './tools/sync.js';
 import { registerPromptTools } from './tools/prompts.js';
+import { registerDeploymentTools } from './tools/deployments.js';
+import { APP_VERSION } from './version.js';
 
 export function createMcpServer(getApiKey: () => string, scopes: string[] = ['*']): McpServer {
   const server = new McpServer({
     name: 'MAP-agent-architect',
-    version: '1.0.0',
+    version: APP_VERSION,
   });
 
   registerAgentCrudTools(server, getApiKey);
@@ -18,6 +20,7 @@ export function createMcpServer(getApiKey: () => string, scopes: string[] = ['*'
   registerAnalysisTools(server, getApiKey);
   registerSyncTools(server);
   registerPromptTools(server, scopes);
+  registerDeploymentTools(server, scopes);
 
   return server;
 }

@@ -10,12 +10,15 @@ RUN npm ci --ignore-scripts
 FROM node:20.19-alpine3.21 AS builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
+ARG APP_VERSION=0.1.0
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV APP_VERSION=${APP_VERSION}
+ENV NEXT_PUBLIC_APP_VERSION=${APP_VERSION}
 
 # Dummy DATABASE_URL satisfies the db/index.ts import at build time.
 # The real value is injected at runtime via docker-compose / K8s Secret.
@@ -28,9 +31,12 @@ FROM node:20.19-alpine3.21 AS runner
 # curl is required for the HEALTHCHECK below
 RUN apk add --no-cache libc6-compat curl
 WORKDIR /app
+ARG APP_VERSION=0.1.0
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV APP_VERSION=${APP_VERSION}
+ENV NEXT_PUBLIC_APP_VERSION=${APP_VERSION}
 
 # Merge into a single RUN to reduce layers
 RUN addgroup --system --gid 1001 nodejs && \

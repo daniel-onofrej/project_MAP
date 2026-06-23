@@ -6,6 +6,7 @@ import { getSessionUser } from '@/lib/auth/session'
 import { eq, and, or, inArray } from 'drizzle-orm'
 import { publishAgentEvent } from '@/lib/realtime/publisher'
 import { writeAuditLog, diffNodes } from '@/lib/audit'
+import { normalizeRuntimePackage } from '@/lib/runtime-assets'
 
 type Params = { id: string }
 
@@ -101,6 +102,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (body.connections !== undefined) updateData.connections = body.connections
     if (body.annotations !== undefined) updateData.annotations = body.annotations
     if (body.settings !== undefined) updateData.settings = { ...body.settings, apiKey: undefined }
+    if (body.runtimePackage !== undefined) updateData.runtimePackage = normalizeRuntimePackage(body.runtimePackage)
     if (body.version !== undefined) updateData.version = body.version
     if (body.groupId !== undefined) updateData.groupId = body.groupId
     if (body.isPublicInOrg !== undefined) updateData.isPublicInOrg = body.isPublicInOrg

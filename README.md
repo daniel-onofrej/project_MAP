@@ -4,9 +4,9 @@
 [![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](package.json)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
 
-**MAP is a self-hosted visual editor for designing, versioning, and sharing AI agent workflows.**
+**MAP is a self-hosted visual graph editor and NVIDIA OpenShell runtime platform for designing, versioning, sharing, deploying, and operating AI agent workflows.**
 
-You describe what an agent should do in plain text — MAP turns it into a structured graph of nodes and edges. You can then edit that graph visually, collaborate with your team in real time, track every change in version history, and push finished prompts directly to AI coding tools like Claude Code, Cursor, or Codex via a built-in MCP server.
+You describe what an agent should do in plain text — MAP turns it into a structured graph of nodes and edges. You can edit that graph visually, collaborate with your team in real time, track every change in version history, push finished prompts to AI coding tools via MCP, and deploy pinned prompt snapshots as live agent runtimes inside native NVIDIA OpenShell sandboxes.
 
 ![MAP full editor interface](docs/full-editor.png)
 
@@ -16,6 +16,8 @@ You describe what an agent should do in plain text — MAP turns it into a struc
 
 - **Self-hosted** — your prompts and agent data never leave your infrastructure
 - **MCP-native** — Claude Code, Cursor, and Windsurf can pull prompts directly from MAP at runtime
+- **OpenShell runtime platform** — run pinned prompt snapshots as persistent sandboxed agents
+- **Sandbox-ready** — package runtime tools, scripts, files, env, ports, policies, logs, and chat per deployment
 - **Bidirectional** — edit visually or in text; MAP keeps both in sync with a diff score
 
 ---
@@ -53,6 +55,21 @@ A built-in [Model Context Protocol](https://modelcontextprotocol.io) server expo
 
 ![Agent Hub showing prompt pull history](docs/agent-hub.png)
 
+### OpenShell runtime platform
+Turn a saved graph prompt into a persistent NVIDIA OpenShell sandbox. MAP is not only an editor: it also runs selected prompt snapshots as live agent runtimes. Each deployment pins the current graph/prompt snapshot, stores the OpenShell YAML policy, creates a sandbox through the deployment worker, and exposes chat, status, logs, provider state, lifecycle actions, and OpenShell CLI access from the UI and MCP tools.
+
+Each deployment has its own runtime command template for Codex CLI, Claude Code, OpenCode, Gemini CLI, or a custom command. The command runs inside the sandbox with `{prompt}` and `{input}` placeholders resolved to files in the sandbox.
+
+Deployments also carry a runtime package: environment variables, tool manifests, startup scripts, extra files, declared ports, external connections, and security notes. MAP writes these under `/sandbox/map` so every runtime can be fully customized per prompt.
+
+Runtime providers can be attached through OpenShell provider profiles, inference-local routing, or legacy env mapping for local compatibility. API keys stay in the deployment worker environment or are passed as one-time provider credentials; runtime packages store variable mappings, not raw provider keys.
+
+Agent Hub now doubles as the OpenShell agent console. Each prompt row shows how many agent runtimes exist for that prompt, how many are running, the pinned prompt, runtime command, provider state, logs, chat output, and start/kill/restart/delete controls. The left rail also includes an in-app OpenShell CLI for commands like `openshell sandbox list`, while the native terminal dashboard remains available:
+
+```bash
+openshell term
+```
+
 ### Pattern library & templates
 Browse a library of pre-built agent patterns (customer support, RAG pipeline, classifier, etc.) and use them as starting points. Generate custom patterns from a prompt using the pattern generator.
 
@@ -85,7 +102,7 @@ No self-registration. Admins create accounts for team members at `/admin/users`.
 | Real-time | Redis 7 + Server-Sent Events |
 | MCP | Custom HTTP MCP server (port 3100) |
 | Proxy | Nginx |
-| Runtime | Docker + Docker Compose |
+| Runtime | NVIDIA OpenShell + Docker + Docker Compose |
 
 ---
 
@@ -99,32 +116,37 @@ cd MAP
 cp .env.example .env
 ```
 
-Open `.env` and add at least one AI API key:
+Open `.env` and set generated secrets plus at least one AI API key:
 
 ```env
 GEMINI_API_KEY=your_key_here
+DB_PASSWORD=generate_with_openssl_rand_hex_24
+SESSION_SECRET=generate_with_openssl_rand_hex_32
+KEY_ENCRYPTION_SECRET=generate_with_openssl_rand_hex_32
+MCP_AUTH_TOKEN=generate_with_openssl_rand_hex_32
 ```
 
 Start everything:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and sign in with the default admin account:
+Create the first admin while the users table is empty:
 
-| Field | Default |
-|---|---|
-| Email | `admin@map.local` |
-| Password | `admin123` |
+```bash
+curl -fsS -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"use-a-generated-password","name":"Admin"}' \
+  http://localhost:3000/api/users
+```
 
-> Change the default password immediately after first login via **Admin → Users**.
+Open [http://localhost:3000](http://localhost:3000) and sign in with that admin account.
 
 ---
 
 ## What gets started
 
-`docker compose up` starts four services:
+`docker compose up -d --build` starts the full local platform: six long-running services plus a one-shot OpenShell bootstrap job.
 
 | Service | Description |
 |---|---|
@@ -132,8 +154,23 @@ Open [http://localhost:3000](http://localhost:3000) and sign in with the default
 | `redis` | Redis 7 — real-time pub/sub and presence |
 | `nextjs` | The Next.js web app (port 3000) |
 | `mcp-server` | MCP server for external AI tool integrations (port 3100) |
+| `openshell-bootstrap` | One-shot job that generates local OpenShell gateway cert/JWT material |
+| `openshell-gateway` | NVIDIA OpenShell gateway using the Docker driver (port 8080, loopback only) |
+| `deployment-worker` | MAP worker that provisions OpenShell sandboxes and runs runtime chat commands (port 3200, loopback only) |
 
 No manual database setup or migration steps needed.
+
+Run Compose from the repository root. The OpenShell gateway mounts the Docker socket and a host-visible `.openshell-cache/` directory so Docker-created sandboxes can read the supervisor/JWT files they need during local development.
+
+The runtime stack has three internal URLs:
+
+- `OPENSHELL_GATEWAY_URL` points the worker at the OpenShell gateway.
+- `DEPLOYMENT_WORKER_URL` points the web app at the deployment worker.
+- `MCP_INTERNAL_URL` points sandboxes and the worker at MAP's internal MCP endpoint.
+
+Set `OPENSHELL_RUNTIME_ENABLED=false` in `.env` to turn off MAP runtime operations without removing the rest of the app. When disabled, the UI still shows prompts and existing runtime records, but create/start/kill/restart/delete/chat/logs and the in-app OpenShell CLI return a clear disabled response. The worker health endpoint remains up so Compose can stay healthy.
+
+For local operator debugging, `OPENSHELL_ALLOW_RAW_CLI=true` lets editors and admins run bounded `openshell ...` commands through the in-app CLI. Set it to `false` when you do not want MAP users to operate the gateway from the UI.
 
 To add Nginx as a reverse proxy (port 80/443):
 ```bash
@@ -144,24 +181,38 @@ docker compose --profile nginx up -d
 
 ## Environment variables
 
-Copy `.env.example` to `.env`. All values have safe defaults for local use.
+Copy `.env.example` to `.env` and generate all secret values before starting Compose.
 
 ```env
-# At least one AI key required for graph generation
+# At least one provider key is required for graph generation.
+# These keys can also be passed into OpenShell runtimes through secretEnv mappings.
 GEMINI_API_KEY=
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 GROQ_API_KEY=
+LITELLM_API_KEY=
+AZURE_OPENAI_API_KEY=
+AZURE_AI_API_KEY=
+GOOGLE_SERVICE_ACCOUNT_KEY=
+NVIDIA_API_KEY=
 
-# Default admin account (created on first boot)
-ADMIN_EMAIL=admin@map.local
-ADMIN_PASSWORD=admin123
-
-# Change these in production
-DB_PASSWORD=maplocal
-SESSION_SECRET=changeme_32byte_dev_secret_here!
-MCP_AUTH_TOKEN=dev_mcp_token_change_in_prod
+# Required secrets
+DB_PASSWORD=
+SESSION_SECRET=
+KEY_ENCRYPTION_SECRET=
+MCP_AUTH_TOKEN=
+AUTO_SYNC_MCP_TOKEN_TO_LOCAL_DEV=false
 APP_URL=http://localhost:3000
+
+# OpenShell deployment services
+OPENSHELL_RUNTIME_ENABLED=true
+OPENSHELL_GATEWAY_URL=http://openshell-gateway:8080
+DEPLOYMENT_WORKER_URL=http://deployment-worker:3200
+MCP_INTERNAL_URL=http://mcp-server:3100/mcp
+DEPLOYMENT_WORKSPACE=/var/lib/map-deployments
+OPENSHELL_RUNTIME_V2_ENABLED=true
+OPENSHELL_ALLOW_LEGACY_SECRET_ENV=false
+OPENSHELL_ALLOW_RAW_CLI=true
 ```
 
 Generate secure secrets:
@@ -208,6 +259,68 @@ npm run dev
 ```
 
 App available at [http://localhost:3000](http://localhost:3000).
+
+## Deploying a graph to OpenShell
+
+OpenShell deployments turn editable graphs into pinned runtime snapshots. A deployment stores the prompt as it existed at creation time, the OpenShell policy YAML, the selected runtime command, provider metadata, package files, and the last observed sandbox state. Later graph edits do not change an existing deployment until you create or update a runtime deliberately.
+
+1. Create or open a graph prompt.
+2. Click **Deploy** in the editor toolbar, open **Sandboxes**, or expand the prompt in **Agent Hub** and choose **Create runtime**.
+3. Choose a runtime preset: Codex CLI, Claude Code, OpenCode, or Custom.
+4. Select the prompt to pin if you opened the dialog from Sandboxes.
+5. Choose a security preset or paste custom OpenShell policy YAML.
+6. Open the **LLM** tab to choose OpenAI, Anthropic, LiteLLM/OpenAI-compatible, Azure OpenAI, Azure AI Foundry, or a custom endpoint.
+7. Configure endpoint/model env values, then map runtime secret names to deployment-worker env names. For example, expose `OPENAI_API_KEY` inside the sandbox from `LITELLM_API_KEY` on the worker.
+8. Review or attach runtime package metadata: graph-detected tools, scripts, files, non-secret environment variables, ports, connections, and security notes.
+9. Create the sandbox.
+10. Open **Agent Hub** or **Sandboxes** to see runtime counts, package details, start, kill, restart, delete, chat with the runtime, and inspect sandbox logs.
+11. Open **OpenShell CLI** from the left rail for in-app command access, or run `openshell term` in a shell that has the OpenShell CLI configured for the same gateway.
+
+Runtime commands are templates. MAP writes the pinned prompt to `/sandbox/map/prompt.md`, writes each chat turn to `/sandbox/map/input.txt`, and resolves `{prompt}` and `{input}` before executing the command inside the sandbox. Package metadata is also written under `/sandbox/map`, including `runtime-package.json`, optional scripts/files, and `env.sh`.
+
+### Graph-owned attachments
+
+Graphs can carry their own runtime attachments before deployment. MAP scans graph nodes for tool/script requirements, then shows an expandable attachment checklist on each graph row. Each detected item is marked:
+
+- `Attached` — a matching tool, script, or file is present and ready.
+- `Missing` — the graph references a tool/script, but no implementation is attached yet.
+- `Needs implementation` — MAP has metadata or a generated stub, but the real code still needs to be filled in.
+
+Use **Attach code**, **Upload file**, or **Create stub** from the graph row checklist to build the graph-owned runtime package. Uploaded text files and pasted code are stored in the graph JSON as `runtimePackage`, included in graph versions/export, and inherited by future deployments. Deployment-time edits are pinned into that deployment only; they do not mutate the saved graph unless you edit the graph attachments directly.
+
+Tool commands should point at files inside `/sandbox/map`, for example `python /sandbox/map/tools/order_lookup.py` or `node /sandbox/map/tools/search.js`. Startup scripts are uploaded under their declared paths, can opt into `runOnStart`, and run after `/sandbox/map/env.sh` is available.
+
+Provider setup supports three operating modes:
+
+- `providers-v2` attaches OpenShell provider profiles and passes one-time or worker-hosted credentials only when the worker creates or updates that provider.
+- `inference-local` attaches providers and points OpenShell inference routing at the selected model endpoint.
+- `legacy-env` writes mapped secrets into the sandbox runtime environment. It is useful for local compatibility, but Providers v2 is the safer default for shared sandboxes.
+
+Runtime LLM credentials use secret pass-through:
+
+```json
+{
+  "env": {
+    "LLM_PROVIDER": "openai-compatible",
+    "OPENAI_BASE_URL": "http://litellm:4000/v1",
+    "OPENAI_MODEL": "your-model"
+  },
+  "secretEnv": {
+    "OPENAI_API_KEY": "LITELLM_API_KEY"
+  }
+}
+```
+
+Plain runtime env values are stored with the deployment. `secretEnv` stores only variable names; the actual value is read from the `deployment-worker` container or sent once from the create-runtime form when MAP creates, starts, or chats with that agent. The worker removes its temporary local `env.sh` after upload; the secret-bearing copy exists inside the sandbox runtime package. Do not put API keys in plain `env`.
+
+The runtime lifecycle is available from both **Sandboxes** and expanded Agent Hub rows:
+
+- Start, stop, restart, reconcile, and delete a sandbox.
+- Chat with the running runtime using the pinned prompt plus the current user message.
+- Inspect logs and event history after provisioning, chat, provider attach/detach, or errors.
+- Attach or detach provider profiles when a sandbox uses Providers v2.
+
+MAP stores the pinned prompt snapshot in the deployment record and creates runtime-scoped MCP access for sandbox prompt/runtime operations. The local Compose gateway allows local OpenShell users and mounts the Docker socket, so treat it as a self-hosted operator environment and harden gateway authentication, network exposure, and Docker access before production use.
 
 ---
 
@@ -289,16 +402,26 @@ Edit `~/.codeium/windsurf/mcp_config.json`:
 
 ## Releases
 
-Releases are automated via [Release Please](https://github.com/googleapis/release-please). Every push to `main` that contains a conventional commit will open or update a release PR. Merging that PR tags the release, publishes a GitHub Release, and updates `CHANGELOG.md`.
+The current release baseline is `0.1.0`. The GitHub repository currently starts from that baseline, and the one-time **Bootstrap v0.1.0 Release** workflow creates the initial `v0.1.0` tag/release from `CHANGELOG.md`.
+
+After `v0.1.0` exists, releases are automated via [Release Please](https://github.com/googleapis/release-please). Every push to `main` that contains a conventional commit opens or updates a release PR. Merging that PR updates package versions, updates `CHANGELOG.md`, tags the release, and publishes a GitHub Release.
+
+While MAP is pre-1.0, normal `feat:` and `fix:` commits stay on the `0.1.x` patch line. Breaking changes intentionally move the pre-1.0 minor line.
+
+CI also runs `npm run version:check` so `package.json`, lockfiles, `.release-please-manifest.json`, MCP server, deployment worker, and `CHANGELOG.md` cannot drift to different versions.
 
 Commit message format:
 
 | Prefix | Result |
 |---|---|
-| `feat: ...` | New minor version |
-| `fix: ...` | New patch version |
-| `feat!: ...` or `BREAKING CHANGE:` | New major version |
+| `feat: ...` | New patch version while pre-1.0, for example `0.1.1` |
+| `fix: ...` | New patch version, for example `0.1.1` |
+| `feat!: ...` or `BREAKING CHANGE:` | New pre-1.0 minor version, for example `0.2.0` |
 | `chore:`, `docs:`, `refactor:` | No release |
+
+No release asset is packaged yet. The future app archive can be added as a `.rar` asset later; for now every release only updates the version metadata and changelog, creates a tag, and publishes the GitHub Release notes.
+
+`APP_VERSION` can still be stamped into Docker builds for local/self-hosted deployments and is returned from service health/status endpoints.
 
 ---
 

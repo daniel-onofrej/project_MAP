@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
-import { agents, promptAgentLinks } from '@/db/schema'
+import { agentDeployments, agents, promptAgentLinks } from '@/db/schema'
 import { getSessionUser } from '@/lib/auth/session'
-import { sql, desc } from 'drizzle-orm'
+import { desc, inArray, sql } from 'drizzle-orm'
 
 export async function GET() {
   const user = await getSessionUser()
@@ -45,6 +45,26 @@ export async function GET() {
       sql`${promptAgentLinks.promptAgentId} = ANY(ARRAY[${sql.raw(promptIds.map(id => `'${id.replace(/'/g, "''")}'`).join(','))}]::text[])`
     )
 
+  const deploymentRows = await db
+    .select({
+      id: agentDeployments.id,
+      agentId: agentDeployments.agentId,
+      name: agentDeployments.name,
+      status: agentDeployments.status,
+      openshellSandboxName: agentDeployments.openshellSandboxName,
+      runtimeKind: agentDeployments.runtimeKind,
+      runtimeCommand: agentDeployments.runtimeCommand,
+      lastError: agentDeployments.lastError,
+      lastLog: agentDeployments.lastLog,
+      deployedAt: agentDeployments.deployedAt,
+      stoppedAt: agentDeployments.stoppedAt,
+      createdAt: agentDeployments.createdAt,
+      updatedAt: agentDeployments.updatedAt,
+    })
+    .from(agentDeployments)
+    .where(inArray(agentDeployments.agentId, promptIds))
+    .orderBy(desc(agentDeployments.updatedAt))
+
   // Fetch consumer agent names
   const consumerIds = [...new Set(links.map(l => l.consumerAgentId))]
   const consumerNames: Record<string, string> = {}
@@ -68,6 +88,12 @@ export async function GET() {
     })
   }
 
+  const deploymentMap: Record<string, typeof deploymentRows> = {}
+  for (const deployment of deploymentRows) {
+    if (!deploymentMap[deployment.agentId]) deploymentMap[deployment.agentId] = []
+    deploymentMap[deployment.agentId].push(deployment)
+  }
+
   const prompts = promptAgents.map(p => ({
     id: p.id,
     name: p.name,
@@ -80,6 +106,9 @@ export async function GET() {
     updatedAt: p.updatedAt,
     agentCount: (linkMap[p.id] ?? []).length,
     agents: linkMap[p.id] ?? [],
+    runtimeCount: (deploymentMap[p.id] ?? []).length,
+    activeRuntimeCount: (deploymentMap[p.id] ?? []).filter(d => d.status === 'ready' || d.status === 'provisioning').length,
+    runtimes: deploymentMap[p.id] ?? [],
   }))
 
   return NextResponse.json({ prompts })

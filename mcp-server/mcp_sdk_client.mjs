@@ -1,6 +1,8 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
+const APP_VERSION = process.env.APP_VERSION || '0.1.0';
+
 async function main() {
   const transport = new StreamableHTTPClientTransport(
     new URL('http://localhost:3100/mcp')
@@ -8,7 +10,7 @@ async function main() {
   
   const client = new Client({
     name: 'test-client',
-    version: '1.0.0'
+    version: APP_VERSION
   });
 
   await client.connect(transport);

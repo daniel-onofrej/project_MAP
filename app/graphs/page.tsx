@@ -6,7 +6,7 @@ import {
   Network, Plus, Search, Globe, Lock,
   MoreHorizontal, Trash2, ExternalLink,
   ChevronRight, UserPlus, Key, Shield, Users as UsersIcon,
-  ChevronDown,
+  ChevronDown, Rocket, Boxes,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useCurrentUser } from '@/lib/auth/user-context'
@@ -28,6 +28,9 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { DeployAgentDialog } from '@/components/deployments/deploy-agent-dialog'
+import { DeploymentsView } from '@/components/deployments/deployments-view'
+import { OpenShellConsole } from '@/components/openshell/openshell-console'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +43,8 @@ type AgentSummary = {
   ownerId: string
   updatedAt: string
   createdAt: string
+  deploymentCount?: number
+  latestDeploymentStatus?: string | null
 }
 
 type Group = {
@@ -81,6 +86,7 @@ export default function GraphsPage() {
   const [agents, setAgents] = useState<AgentSummary[]>([])
   const [loadingAgents, setLoadingAgents] = useState(true)
   const [search, setSearch] = useState('')
+  const [deployAgent, setDeployAgent] = useState<AgentSummary | null>(null)
 
   const fetchAgents = useCallback(async () => {
     setLoadingAgents(true)
@@ -154,12 +160,34 @@ export default function GraphsPage() {
             handleNewGraph={handleNewGraph}
             handleDelete={handleDelete}
             router={router}
+            onDeploy={setDeployAgent}
           />
         )}
+        {activePanel === 'deployments' && (
+          <DeploymentsView
+            initialAgentId={deployAgent?.id ?? null}
+            initialAgentName={deployAgent?.name ?? null}
+            onOpenAgent={(agentId) => router.push(`/editor?id=${agentId}`)}
+          />
+        )}
+        {activePanel === 'openshell' && <OpenShellConsole />}
         {activePanel === 'wiki' && <WikiPanel />}
         {activePanel === 'members' && <MembersPanel groupId={activeWorkspace.id} groupName={activeWorkspace.name} />}
         {activePanel === 'admin' && <AdminPanel />}
       </div>
+
+      <DeployAgentDialog
+        open={!!deployAgent}
+        onOpenChange={(open) => {
+          if (!open) setDeployAgent(null)
+        }}
+        agentId={deployAgent?.id ?? null}
+        agentName={deployAgent?.name ?? null}
+        onCreated={() => {
+          fetchAgents()
+          setActivePanel('deployments')
+        }}
+      />
     </div>
   )
 }
@@ -176,6 +204,7 @@ function GraphsPanel({
   handleNewGraph,
   handleDelete,
   router,
+  onDeploy,
 }: {
   activeWorkspaceName: string
   loadingAgents: boolean
@@ -186,6 +215,7 @@ function GraphsPanel({
   handleNewGraph: () => void
   handleDelete: (id: string) => void
   router: ReturnType<typeof useRouter>
+  onDeploy: (agent: AgentSummary) => void
 }) {
   return (
     <>
@@ -248,6 +278,7 @@ function GraphsPanel({
                   isAdmin={user?.role === 'admin'}
                   onDelete={handleDelete}
                   onOpen={() => router.push(`/editor?id=${agent.id}`)}
+                  onDeploy={() => onDeploy(agent)}
                 />
               ))}
             </div>
@@ -264,12 +295,14 @@ function AgentCard({
   isAdmin,
   onDelete,
   onOpen,
+  onDeploy,
 }: {
   agent: AgentSummary
   currentUserId: string
   isAdmin: boolean
   onDelete: (id: string) => void
   onOpen: () => void
+  onDeploy: () => void
 }) {
   const isOwner = agent.ownerId === currentUserId
   return (
@@ -296,6 +329,12 @@ function AgentCard({
             <DropdownMenuItem onClick={onOpen}>
               <ExternalLink className="mr-2 h-4 w-4" /> Open
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={onDeploy}>
+              <Rocket className="mr-2 h-4 w-4" /> Deploy
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.assign(`/deployments?agentId=${agent.id}&agentName=${encodeURIComponent(agent.name)}`)}>
+              <Boxes className="mr-2 h-4 w-4" /> Sandboxes
+            </DropdownMenuItem>
             {(isOwner || isAdmin) && (
               <>
                 <DropdownMenuSeparator />
@@ -314,6 +353,12 @@ function AgentCard({
         <p className="text-xs text-muted-foreground line-clamp-2">{agent.description}</p>
       )}
       <div className="flex items-center gap-2 mt-auto pt-1">
+        {(agent.deploymentCount ?? 0) > 0 && (
+          <Badge variant="outline" className="text-xs gap-1 font-normal border-primary/30 text-primary">
+            <Boxes className="h-3 w-3" />
+            {agent.deploymentCount} {agent.latestDeploymentStatus ?? 'sandbox'}
+          </Badge>
+        )}
         {agent.isPublicInOrg ? (
           <Badge variant="outline" className="text-xs gap-1 font-normal">
             <Globe className="h-3 w-3" /> Public

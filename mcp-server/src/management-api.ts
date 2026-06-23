@@ -4,6 +4,7 @@ import { getAllAgents } from './storage.js';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { APP_VERSION } from './version.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -64,7 +65,7 @@ export async function handleManagementRequest(
       status: 'running',
       uptime: Math.floor((Date.now() - startTime) / 1000),
       port: parseInt(process.env.MCP_PORT || '3100'),
-      version: '1.0.0',
+      version: APP_VERSION,
       agentCount: agents.length,
     });
     return true;
