@@ -1,11 +1,26 @@
 {
   "name": "map",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Self-hosted AI agent graph editor and OpenShell runtime platform with bidirectional prompt-flow conversion, version control, real-time collaboration, and MCP integration",
-  "keywords": ["ai", "agent", "graph", "nextjs", "mcp", "llm", "prompt-engineering", "workflow", "multi-agent"],
+  "keywords": [
+    "ai",
+    "agent",
+    "graph",
+    "nextjs",
+    "mcp",
+    "llm",
+    "prompt-engineering",
+    "workflow",
+    "multi-agent"
+  ],
   "homepage": "https://github.com/daniel-onofrej/project_MAP#readme",
-  "bugs": { "url": "https://github.com/daniel-onofrej/project_MAP/issues" },
-  "repository": { "type": "git", "url": "git+https://github.com/daniel-onofrej/project_MAP.git" },
+  "bugs": {
+    "url": "https://github.com/daniel-onofrej/project_MAP/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daniel-onofrej/project_MAP.git"
+  },
   "license": "MIT",
   "author": "MAP Contributors",
   "scripts": {

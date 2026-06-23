@@ -1,7 +1,7 @@
 # MAP — Model Attention Path
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](package.json)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
 
 **MAP is a self-hosted visual graph editor and NVIDIA OpenShell runtime platform for designing, versioning, sharing, deploying, and operating AI agent workflows.**
@@ -402,11 +402,11 @@ Edit `~/.codeium/windsurf/mcp_config.json`:
 
 ## Releases
 
-The current release baseline is `0.1.0`. The GitHub repository currently starts from that baseline, and the one-time **Bootstrap v0.1.0 Release** workflow creates the initial `v0.1.0` tag/release from `CHANGELOG.md`.
+The current release is `0.2.0`, which introduces the OpenShell runtime platform, deployment worker, Sandboxes UI, runtime packages, provider setup, and MCP deployment tools.
 
-After `v0.1.0` exists, releases are automated via [Release Please](https://github.com/googleapis/release-please). Every push to `main` that contains a conventional commit opens or updates a release PR. Merging that PR updates package versions, updates `CHANGELOG.md`, tags the release, and publishes a GitHub Release.
+Releases are automated via [Release Please](https://github.com/googleapis/release-please). Every push to `main` that contains a conventional commit opens or updates a release PR. Merging that PR updates package versions, updates `CHANGELOG.md`, tags the release, and publishes a GitHub Release.
 
-While MAP is pre-1.0, normal `feat:` and `fix:` commits stay on the `0.1.x` patch line. Breaking changes intentionally move the pre-1.0 minor line.
+While MAP is pre-1.0, normal `feat:` and `fix:` commits stay on the current patch line. Breaking changes intentionally move the pre-1.0 minor line.
 
 CI also runs `npm run version:check` so `package.json`, lockfiles, `.release-please-manifest.json`, MCP server, deployment worker, and `CHANGELOG.md` cannot drift to different versions.
 
@@ -414,9 +414,9 @@ Commit message format:
 
 | Prefix | Result |
 |---|---|
-| `feat: ...` | New patch version while pre-1.0, for example `0.1.1` |
-| `fix: ...` | New patch version, for example `0.1.1` |
-| `feat!: ...` or `BREAKING CHANGE:` | New pre-1.0 minor version, for example `0.2.0` |
+| `feat: ...` | New patch version while pre-1.0, for example `0.2.1` |
+| `fix: ...` | New patch version, for example `0.2.1` |
+| `feat!: ...` or `BREAKING CHANGE:` | New pre-1.0 minor version, for example `0.3.0` |
 | `chore:`, `docs:`, `refactor:` | No release |
 
 No release asset is packaged yet. The future app archive can be added as a `.rar` asset later; for now every release only updates the version metadata and changelog, creates a tag, and publishes the GitHub Release notes.

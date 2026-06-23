@@ -13,7 +13,7 @@ Commit messages follow the [Conventional Commits](https://www.conventionalcommit
 | `feat!:` / `fix!:` / `BREAKING CHANGE:` | Breaking change → bumps **major** version |
 | `chore:`, `docs:`, `refactor:`, `style:` | No version bump |
 
-## [Unreleased]
+## [0.2.0] — OpenShell runtime platform
 
 ### Added
 - Native OpenShell deployment platform for turning saved graph prompts into persistent sandbox runtimes.
